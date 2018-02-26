@@ -3,7 +3,7 @@
 //! This module provides FFI-safe protocol definitions for the standard UEFI protocols.
 
 
-mod text;
+mod console;
 
 
-pub use self::text::*;
+pub use self::console::*;
