@@ -90,6 +90,26 @@ impl Color {
 }
 
 
+/// UEFI Event
+#[derive(Debug)]
+pub struct Event(pub(in types) ());
+
+unsafe impl Sync for Event { }
+
+
+bitflags! {
+    /// Specifies an Event's mode and attributes
+    pub struct EventType: u32 {
+        const Time = 0x8000_0000;
+        const Runtime = 0x4000_0000;
+        const NotifyWait = 0x0000_0100;
+        const NotifySignal = 0x0000_0200;
+        const SignalExitBootServices = 0x0000_0201;
+        const SignalVirtualAddressChange = 0x6000_0202;
+    }
+}
+
+
 /// Opaque handle to some object
 pub type Handle = AtomicPtr<()>;
 
@@ -236,6 +256,17 @@ impl Status {
             Ok(*self)
         }
     }
+}
+
+
+/// UEFI Task Priority Level
+#[derive(Clone, Copy, Debug)]
+#[repr(usize)]
+pub enum TPL {
+    Application = 4,
+    Callback = 8,
+    Notify = 16,
+    HightLevel = 31,
 }
 
 

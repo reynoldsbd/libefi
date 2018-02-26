@@ -5,6 +5,8 @@
 #![feature(compiler_builtins_lib, const_fn, lang_items)]
 
 
+#[macro_use]
+extern crate bitflags;
 extern crate compiler_builtins;
 extern crate rlibc;
 extern crate spin;

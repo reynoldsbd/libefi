@@ -1,9 +1,10 @@
 arch ?= x86_64
+profile ?= debug
 lld_link ?= lld-link
 ovmf ?= /usr/share/ovmf/OVMF.fd
 
-build_dir := target/$(arch)-pc-uefi/debug
-efi_app := $(build_dir)/efi-test.efi
+build_dir := target/$(arch)-pc-uefi/$(profile)
+efi_app := $(build_dir)/test.efi
 esp_image := $(build_dir)/esp.img
 iso := $(build_dir)/efi_test.iso
 
@@ -19,11 +20,20 @@ clean:
 
 
 test: $(iso)
-	@qemu-system-$(arch) -net none -bios $(ovmf) -cdrom $(iso)
+	@qemu-system-$(arch) -m 512 -net none -bios $(ovmf) -cdrom $(iso)
 
 
+export RUST_TARGET_PATH=$(abspath targets)
+ifeq ($(profile), debug)
+	profile_arg :=
+else
+	profile_arg := --$(profile)
+endif
 $(efi_app): $(shell find src -type f)
-	@RUST_TARGET_PATH=$(abspath ../targets) xargo build --target=$(arch)-pc-uefi
+	@xargo build \
+		--target=$(arch)-pc-uefi \
+		--bin test \
+		$(profile_arg)
 
 
 $(esp_image): $(efi_app)

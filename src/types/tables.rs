@@ -1,13 +1,17 @@
+use core::mem;
 use core::ptr;
 use core::sync::atomic::AtomicPtr;
 
 use super::{
     AllocateType,
     Char16,
+    Event,
+    EventType,
     Handle,
     MemoryType,
     OwnedPtr,
     PhysicalAddress,
+    TPL,
     Status,
 };
 
@@ -169,17 +173,21 @@ pub struct BootServices {
         buffer: *mut u8,
     ) -> Status,
     pub _create_event: extern "win64" fn(
-        event_type: u32,
-        notify_tpl: usize, // TODO
-        notify_function: usize, // TODO
-        notify_context: usize, // TODO
-        event: &mut usize // TODO
+        event_type: EventType,
+        notify_tpl: TPL,
+        notify_function: extern "win64" fn(event: &Event, context: *const ()),
+        notify_context: *const (),
+        event: &mut &Event
     ) -> Status,
     pub _set_timer: extern "win64" fn(),
-    pub _wait_for_event: extern "win64" fn(),
-    pub _signal_event: extern "win64" fn(),
-    pub _close_event: extern "win64" fn(),
-    pub _check_event: extern "win64" fn(),
+    pub _wait_for_event: extern "win64" fn(
+        number_of_events: usize,
+        event: *const &Event,
+        index: &mut usize
+    ) -> Status,
+    pub _signal_event: extern "win64" fn(event: &Event) -> Status,
+    pub _close_event: extern "win64" fn(event: &Event) -> Status,
+    pub _check_event: extern "win64" fn(event: &Event) -> Status,
     pub _install_protocol_interface: extern "win64" fn(),
     pub _reinstall_protocol_interface: extern "win64" fn(),
     pub _uninstall_protocol_interface: extern "win64" fn(),
@@ -262,7 +270,56 @@ impl BootServices {
         Ok(())
     }
 
-    pub fn create_event(&self) {
-        unimplemented!();
+    /// Creates an event
+    pub fn create_event<T>(&self,
+                           event_type: EventType,
+                           notify_tpl: TPL,
+                           notify_function: extern "win64" fn(&Event, &T),
+                           notify_context: &T)
+        -> Result<&Event, Status> where T: ?Sized {
+
+        // It's safe to cast notify_function to a different signature as long as the UEFI system
+        // upholds its side of the spec and passes notify_context unmodified
+        let notify_function: extern "win64" fn(&Event, *const ()) =
+            unsafe { mem::transmute(notify_function) };
+        let notify_context = notify_context as *const T as *const ();
+
+        let mut event = &Event(());
+        (self._create_event)(event_type, notify_tpl, notify_function, notify_context, &mut event)
+            .as_result()
+            .map(|_| event)
+    }
+
+    /// Closes the given event
+    pub fn close_event(&self, event: &Event) -> Result<(), Status> {
+
+        (self._close_event)(event)
+            .as_result()
+            .map(|_| ())
+    }
+
+    /// Signals the given event
+    pub fn signal_event(&self, event: &Event) -> Result<(), Status> {
+
+        (self._signal_event)(event)
+            .as_result()
+            .map(|_| ())
+    }
+
+    /// Stops execution until an event is signaled
+    pub fn wait_for_event(&self, events: &[&Event]) -> Result<usize, Status> {
+
+        let mut index: usize = 0;
+        (self._wait_for_event)(events.len(), events.as_ptr(), &mut index)
+            .as_result()
+            .map(|_| index)
+    }
+
+    /// Checks whether an event is in the signaled state
+    pub fn check_event(&self, event: &Event) -> Result<(), Status> {
+
+        (self._check_event)(event)
+            .as_result()
+            .map(|_| ())
     }
 }

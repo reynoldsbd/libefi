@@ -109,5 +109,5 @@ This will compile an EFI image and place it under the *target/* directory.
 
 # Examples
 
-See the *libefi-test/* directory for an example of an EFI application that uses this crate. It also
-contains examples of usage and a Makefile demonstrating how to test using qemu and OVMF.
+See the *src/bin/test.rs* file for an example of an EFI application that uses this crate. See also
+the *Makefile*, which demonstrates how to test using qemu and OVMF.
