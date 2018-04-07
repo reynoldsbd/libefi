@@ -164,7 +164,7 @@ fn test_memory() -> Result<(), usize> {
 
     let mut num_errs = 0;
 
-    efi_println!("    test memory allocation");
+    efi_println!("    test page allocation");
     let mut addr: PhysicalAddress = 1;
     let res = SYSTEM_TABLE.boot_services.allocate_pages(
         AllocateType::AllocateAnyPages,
@@ -173,18 +173,52 @@ fn test_memory() -> Result<(), usize> {
         &mut addr
     );
     if let Err(err) = res {
-        efi_println!("!   failed to allocate memory");
+        efi_println!("!   failed to allocate page");
         efi_println!("!   {:?}", err);
         num_errs += 1;
     } else {
         efi_println!("#   page allocated at {:x}", addr);
 
-        efi_println!("    test writing to allocated memory");
+        efi_println!("    test writing to allocated page");
         // Build a byte slice from the allocated memory, then attempt to write into that slice
         // There's no way to elegantly catch if this fails. Either the write will succeed, or the
         // system will catch due to an uncaught interrupt
         let mem = unsafe { slice::from_raw_parts_mut(addr as *mut u8, 4096) };
         mem[0] = 1;
+
+        efi_println!("    test freeing page");
+        if let Err(err) = SYSTEM_TABLE.boot_services.free_pages(addr, 1) {
+            efi_println!("!   failed to free page");
+            efi_println!("!   {:?}", err);
+            num_errs += 1;
+        }
+    }
+
+    efi_println!("    test pool allocation");
+    let res = SYSTEM_TABLE.boot_services.allocate_pool(MemoryType::EfiLoaderData, 128);
+    match res {
+        Ok(buffer) => {
+            efi_println!("#   pool allocated at {:p}", buffer);
+
+            efi_println!("    test writing to allocated pool");
+            // Build a byte slice from the allocated memory, then attempt to write into that slice
+            // There's no way to elegantly catch if this fails. Either the write will succeed, or the
+            // system will catch due to an uncaught interrupt
+            let mem = unsafe { slice::from_raw_parts_mut(buffer, 128) };
+            mem[0] = 1;
+
+            efi_println!("    test freeing pool");
+            if let Err(err) = SYSTEM_TABLE.boot_services.free_pool(buffer) {
+                efi_println!("!   failed to free pool");
+                efi_println!("!   {:?}", err);
+                num_errs += 1;
+            }
+        },
+        Err(err) => {
+            efi_println!("!   failed to allocate pool");
+            efi_println!("!   {:?}", err);
+            num_errs += 1;
+        },
     }
 
     if num_errs > 0 {

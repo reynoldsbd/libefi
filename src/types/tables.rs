@@ -340,4 +340,29 @@ impl BootServices {
             .as_result()
             .map(|_| ())
     }
+
+    /// Frees memory pages
+    pub fn free_pages(&self, memory: PhysicalAddress, pages: usize) -> Result<(), Status> {
+
+        (self._free_pages)(memory, pages)
+            .as_result()
+            .map(|_| ())
+    }
+
+    /// Allocates pool memory
+    pub fn allocate_pool(&self, pool_type: MemoryType, size: usize) -> Result<*mut u8, Status> {
+
+        let mut buffer: *mut u8 = 0 as *mut u8;
+        (self._allocate_pool)(pool_type, size, &mut buffer)
+            .as_result()
+            .map(|_| buffer)
+    }
+
+    /// Returns pool memory to the system
+    pub fn free_pool(&self, buffer: *mut u8) -> Result<(), Status> {
+
+        (self._free_pool)(buffer)
+            .as_result()
+            .map(|_| ())
+    }
 }
