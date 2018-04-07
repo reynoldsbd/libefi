@@ -259,6 +259,15 @@ impl Status {
 }
 
 
+/// Defines the type of a timer
+#[repr(C)]
+pub enum TimerDelay {
+    Cancel,
+    Periodic,
+    Relative,
+}
+
+
 /// UEFI Task Priority Level
 #[derive(Clone, Copy, Debug)]
 #[repr(usize)]
