@@ -6,6 +6,8 @@
 extern crate efi;
 
 use efi::console;
+use efi::protocols::ScanCode;
+use efi::runtime::SYSTEM_TABLE;
 use efi::types::{
     Color,
     Event,
@@ -13,7 +15,6 @@ use efi::types::{
     Status,
     TPL,
 };
-use efi::runtime::SYSTEM_TABLE;
 
 
 fn test_console() -> Result<(), usize> {
@@ -29,15 +30,8 @@ fn test_console() -> Result<(), usize> {
     }
 
     efi_println!("    test configuring cursor");
-    if let Err(err) = console::configure_cursor(0, 0, true) {
+    if let Err(err) = console::configure_cursor(0, 1, true) {
         efi_println!("!    failed to confgure cursor");
-        efi_println!("!   {:?}", err);
-        num_errs += 1;
-    }
-
-    efi_println!("    test setting colors");
-    if let Err(err) = console::set_colors(Color::LightGreen, Color::Black) {
-        efi_println!("!   failed to set colors");
         efi_println!("!   {:?}", err);
         num_errs += 1;
     }
@@ -49,11 +43,30 @@ fn test_console() -> Result<(), usize> {
         num_errs += 1;
     }
 
+    efi_println!("    test setting colors");
+    if let Err(err) = console::set_colors(Color::LightGreen, Color::Black) {
+        efi_println!("!   failed to set colors");
+        efi_println!("!   {:?}", err);
+        num_errs += 1;
+    }
+
     efi_println!("    test writing string");
     if let Err(err) = console::write("#   foo\r\n") {
         efi_println!("!   failed to write string");
         efi_println!("!   {:?}", err);
         num_errs += 1;
+    }
+
+    efi_println!("    test read char");
+    match console::read_char() {
+        Ok(key) => {
+            efi_println!("#   {:?}", key);
+        },
+        Err(err) => {
+            efi_println!("!   failed to read char");
+            efi_println!("!   {:?}", err);
+            num_errs += 1;
+        }
     }
 
     if num_errs > 0 {

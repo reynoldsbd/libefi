@@ -3,9 +3,11 @@
 
 use core::fmt;
 
+use protocols::InputKey;
 use runtime::SYSTEM_TABLE;
 use types::{
     Color,
+    Event,
     Status,
 };
 
@@ -22,6 +24,15 @@ pub fn configure_cursor(column: usize, row: usize, visible: bool) -> Result<(), 
 
     SYSTEM_TABLE.con_out.set_cursor_position(column, row)?;
     SYSTEM_TABLE.con_out.enable_cursor(visible)
+}
+
+
+pub fn read_char() -> Result<InputKey, Status> {
+
+    let key_event_ref: &Event = &SYSTEM_TABLE.con_in.wait_for_key;
+    let key_event_arr: &[&Event] = &[key_event_ref; 1];
+    SYSTEM_TABLE.boot_services.wait_for_event(&key_event_arr)?;
+    SYSTEM_TABLE.con_in.read_key_stroke()
 }
 
 

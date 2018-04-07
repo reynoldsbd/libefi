@@ -2,6 +2,7 @@ use types::{
     Bool,
     Char16,
     Color,
+    Event,
     OwnedPtr,
     Status,
 };
@@ -16,7 +17,7 @@ use types::{
 pub struct SimpleTextInput {
     pub _reset: extern "win64" fn(this: &SimpleTextInput, extended_verification: Bool) -> Status,
     pub _read_key_stroke: extern "win64" fn(this: &SimpleTextInput, key: &mut InputKey) -> Status,
-    pub wait_for_key: usize, // TODO: Event
+    pub wait_for_key: OwnedPtr<Event>,
 }
 
 impl SimpleTextInput {
@@ -32,7 +33,10 @@ impl SimpleTextInput {
     /// Returns the next input character
     pub fn read_key_stroke(&self) -> Result<InputKey, Status> {
 
-        let mut key = InputKey::default();
+        let mut key = InputKey {
+            scan_code: ScanCode::Null,
+            unicode_char: 0,
+        };
         (self._read_key_stroke)(self, &mut key)
             .as_result()
             .map(|_| key)
@@ -41,14 +45,41 @@ impl SimpleTextInput {
 
 
 /// Describes a keystroke
-///
-/// TODO:
-///
-/// * use an enum for scan_code
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct InputKey {
-    pub scan_code: u16,
+    pub scan_code: ScanCode,
     pub unicode_char: Char16,
+}
+
+
+/// Represents special keys
+#[derive(Clone, Copy, Debug)]
+#[repr(u16)]
+pub enum ScanCode {
+    Null = 0x00,
+    CursorUp = 0x01,
+    CursorDown = 0x02,
+    CursorRight = 0x03,
+    CursorLeft = 0x04,
+    Home = 0x05,
+    End = 0x06,
+    Insert = 0x07,
+    Delete = 0x08,
+    PageUp = 0x09,
+    PageDown = 0x0a,
+    Function1 = 0x0b,
+    Function2 = 0x0c,
+    Function3 = 0x0d,
+    Function4 = 0x0e,
+    Function5 = 0x0f,
+    Function6 = 0x10,
+    Function7 = 0x11,
+    Function8 = 0x12,
+    Function9 = 0x13,
+    Function10 = 0x14,
+    Function11 = 0x15,
+    Function12 = 0x16,
+    Escape = 0x17,
 }
 
 

@@ -21,6 +21,14 @@ is ergonomic wherever possible but still incredibly flexible when necessary.
 Cargo itself isn't quite up to the task of building EFI images by itself, but it comes very close
 and can be configured to do almost all of the work itself. There are just a few extra pieces needed.
 
+### Rust
+
+A *nightly* compiler is required, as is the Rust source.
+
+1. Install Rust via [*rustup*](https://www.rustup.rs/)
+2. Add the Rust source component: `rustup component add rust-src`
+3. Switch to the nightly compiler: `cd path/to/libefi && rustup override set nightly`
+
 ### Xargo
 
 `libefi` depends on Rust's `libcore`, which is currently not automatically cross-compiled by Cargo.
@@ -36,8 +44,8 @@ $ cargo install xargo
 ### LLD
 
 Rust's toolchain currently uses GNU ld to link programs. Unfortunately, ld typically isn't build
-with support for the PE32+ file format used by UEFI, so another linker must be used. LLVM's LLD is
-known to work for this purpose, and is readily available for most platforms.
+with support for the PE32+ file format used by UEFI, so another linker must be used. LLVM's LLD
+version 6.0 or above is known to work for this purpose, and is readily available for most platforms.
 
 [This page](http://releases.llvm.org/download.html) links to pre-built binaries for supported
 platforms. Linux users may also have the option of using a package manager to download LLVM. In
@@ -48,6 +56,15 @@ Once installed, ensure that the `lld-link` command is available in your shell of
 specifications provided in this repo (see next section) are configured to use `lld-link` to link the
 final EFI image. To do this, you may need to create a symlink to the real LLD executable, or you can
 simply modify the target specification to point to the installed binary.
+
+> If using the above-linked APT repositories, the `lld-link` executable will have a version number
+> appended, e.g. `lld-link-6.0`. Rather than modifying the target spec to point to this binary, I
+> prefer creating a symlink:
+>
+> ```bash
+> $ mkdir -p ~/.local/bin
+> $ ln -s /usr/bin/lld-link-6.0 ~/.local/bin/lld-link
+> ```
 
 ### Target Specification
 
@@ -110,4 +127,11 @@ This will compile an EFI image and place it under the *target/* directory.
 # Examples
 
 See the *src/bin/test.rs* file for an example of an EFI application that uses this crate. See also
-the *Makefile*, which demonstrates how to test using qemu and OVMF.
+the *Makefile*, which demonstrates how to test using qemu and OVMF. When running on Ubuntu, the
+*Makefile* has the following package dependencies:
+
+* `build-essential`
+* `mtools`
+* `ovmf`
+* `qemu-system-x86`
+* `xorriso`
