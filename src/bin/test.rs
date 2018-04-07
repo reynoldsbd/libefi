@@ -1,12 +1,17 @@
-#![no_std]
+#![feature(alloc)]
 #![no_main]
+#![no_std]
 
 
+extern crate alloc;
 #[macro_use]
 extern crate efi;
 
+use alloc::boxed::Box;
+
+use core::slice;
+
 use efi::console;
-use efi::protocols::ScanCode;
 use efi::runtime::SYSTEM_TABLE;
 use efi::types::{
     AllocateType,
@@ -18,8 +23,6 @@ use efi::types::{
     Status,
     TPL,
 };
-
-use core::slice;
 
 
 fn test_console() -> Result<(), usize> {
@@ -233,6 +236,11 @@ fn test_memory() -> Result<(), usize> {
             num_errs += 1;
         },
     }
+
+    efi_println!("    test global allocator");
+    // Either the allocation will succeed or this thread will panic
+    let heap_string = Box::new("hello from the heap");
+    efi_println!("#   heap string: {}", heap_string);
 
     if num_errs > 0 {
         Err(num_errs)

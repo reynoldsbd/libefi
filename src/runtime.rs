@@ -8,12 +8,22 @@
 //! * ensure the correct lang_items are available and fully implemented (esp. panic_format)
 
 
+use alloc::heap;
+use alloc::heap::{
+    AllocErr,
+    Layout,
+};
+
+use core::fmt;
 use core::ops;
 
 use spin::RwLock;
 
 use types::{
+    AllocateType,
     Handle,
+    MemoryType,
+    PhysicalAddress,
     Status,
     SystemTable,
 };
@@ -81,6 +91,61 @@ impl ops::Deref for SystemTableWrapper {
 pub static SYSTEM_TABLE: SystemTableWrapper = SystemTableWrapper::new();
 
 
+/// Heap allocator for use in a pre-boot UEFI environment
+///
+/// TODO:
+///
+/// This implementation satisfies each request by allocating one or more entire pages. This makes
+/// it relatively easy to honor alignment requests (each allocated block is always page-aligned).
+/// However, this implementation is not ideal because it will lead to memory exhaustion very
+/// quickly.
+///
+/// An alternative would be to use UEFI Boot Services' allocate_pool and free_pool functions. These
+/// functions do not provide any way of controlling alignment, so sastisfying alignment requirements
+/// with such an implementation would require over-allocating a large block and returning a properly
+/// aligned pointer within that block that satisfies the requested Layout.
+///
+/// This strategy makes deallocation difficult, because the allocator would need to maintain a
+/// mapping of allocations so that free_pool can be passed the true allocation addresses.
+pub(crate) struct PageAllocator {}
+
+unsafe impl<'a> heap::Alloc for &'a PageAllocator {
+
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+
+        if layout.align() > 4096 {
+            return Err(AllocErr::Unsupported {
+                details: "maximum supported alignment is 4096"
+            });
+        }
+
+        let num_pages = 1 + layout.size() / 4096;
+        let mut addr: PhysicalAddress = 1;
+        let res = SYSTEM_TABLE.boot_services.allocate_pages(
+            AllocateType::AllocateAnyPages,
+            MemoryType::EfiLoaderData,
+            num_pages,
+            &mut addr
+        );
+
+        if let Err(err) = res {
+            Err(AllocErr::Exhausted {
+                request: layout
+            })
+        } else {
+            Ok(addr as *mut u8)
+        }
+    }
+
+    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+
+        let num_pages = 1 + layout.size() / 4096;
+        SYSTEM_TABLE.boot_services.free_pages(ptr as PhysicalAddress, num_pages)
+            .expect("failed to dealloc pages")
+    }
+}
+
+
 /// Required Rust lang item
 #[lang = "eh_personality"]
 #[no_mangle]
@@ -90,4 +155,9 @@ pub extern fn eh_personality() {}
 /// Handles a panic by printing the error message to the screen
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub extern fn panic_format() {}
+pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str, line: u32, col: u32) -> ! {
+
+    efi_println!("panic in file {}:{}:{}", file, line, col);
+    efi_println!("{}", msg);
+    loop {}
+}
