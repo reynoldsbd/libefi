@@ -156,7 +156,7 @@ pub struct BootServices {
         allocation_type: AllocateType,
         memory_type: MemoryType,
         pages: usize,
-        memory: PhysicalAddress
+        memory: &mut PhysicalAddress
     ) -> Status,
     pub _free_pages: extern "win64" fn(
         memory: PhysicalAddress,
@@ -250,53 +250,6 @@ pub struct BootServices {
 
 impl BootServices {
 
-    /// Allocates memory pages from the system
-    pub fn allocate_pages(&self,
-                          allocation_type: AllocateType,
-                          memory_type: MemoryType,
-                          pages: usize,
-                          memory: PhysicalAddress)
-        -> Result<PhysicalAddress, Status> {
-
-        (self._allocate_pages)(allocation_type, memory_type, pages, memory)
-            .as_result()
-            .map(|_| memory)
-    }
-
-    /// Frees memory pages
-    pub fn free_pages(&self, memory: PhysicalAddress, pages: usize) -> Result<(), Status> {
-
-        (self._free_pages)(memory, pages)
-            .as_result()?;
-        Ok(())
-    }
-
-    /// Returns a copy of the current memory map
-    ///
-    /// TODO:
-    ///
-    /// * create an efi::MemoryMap type that can be indexed to retrieve MemoryDescriptors
-    pub fn get_memory_map(&self) {
-        unimplemented!();
-    }
-
-    /// Allocates a memory region
-    pub fn allocate_pool(&self, pool_type: MemoryType, size: usize) -> Result<*mut u8, Status> {
-
-        let mut buffer: *mut u8 = ptr::null_mut();
-        (self._allocate_pool)(pool_type, size, &mut buffer)
-            .as_result()
-            .map(|_| buffer)
-    }
-
-    /// Returns pool memory to the system
-    pub fn free_pool(&self, buffer: *mut u8) -> Result<(), Status> {
-
-        (self._free_pool)(buffer)
-            .as_result()?;
-        Ok(())
-    }
-
     /// Creates an event
     pub fn create_event<T>(&self,
                            event_type: EventType,
@@ -371,6 +324,19 @@ impl BootServices {
     pub fn restore_tpl(&self, old_tpl: TPL) -> Result<(), Status> {
 
         (self._restore_tpl)(old_tpl)
+            .as_result()
+            .map(|_| ())
+    }
+
+    /// Allocates memory pages from the system
+    pub fn allocate_pages(&self,
+                          allocation_type: AllocateType,
+                          memory_type: MemoryType,
+                          pages: usize,
+                          memory: &mut PhysicalAddress)
+        -> Result<(), Status> {
+
+        (self._allocate_pages)(allocation_type, memory_type, pages, memory)
             .as_result()
             .map(|_| ())
     }

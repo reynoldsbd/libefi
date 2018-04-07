@@ -9,12 +9,17 @@ use efi::console;
 use efi::protocols::ScanCode;
 use efi::runtime::SYSTEM_TABLE;
 use efi::types::{
+    AllocateType,
     Color,
     Event,
     EventType,
+    MemoryType,
+    PhysicalAddress,
     Status,
     TPL,
 };
+
+use core::slice;
 
 
 fn test_console() -> Result<(), usize> {
@@ -155,6 +160,41 @@ fn test_events() -> Result<(), usize> {
 }
 
 
+fn test_memory() -> Result<(), usize> {
+
+    let mut num_errs = 0;
+
+    efi_println!("    test memory allocation");
+    let mut addr: PhysicalAddress = 1;
+    let res = SYSTEM_TABLE.boot_services.allocate_pages(
+        AllocateType::AllocateAnyPages,
+        MemoryType::EfiLoaderData,
+        1,
+        &mut addr
+    );
+    if let Err(err) = res {
+        efi_println!("!   failed to allocate memory");
+        efi_println!("!   {:?}", err);
+        num_errs += 1;
+    } else {
+        efi_println!("#   page allocated at {:x}", addr);
+
+        efi_println!("    test writing to allocated memory");
+        // Build a byte slice from the allocated memory, then attempt to write into that slice
+        // There's no way to elegantly catch if this fails. Either the write will succeed, or the
+        // system will catch due to an uncaught interrupt
+        let mem = unsafe { slice::from_raw_parts_mut(addr as *mut u8, 4096) };
+        mem[0] = 1;
+    }
+
+    if num_errs > 0 {
+        Err(num_errs)
+    } else {
+        Ok(())
+    }
+}
+
+
 extern "win64" fn empty_callback(_: &Event, _: &()) { }
 
 extern "win64" fn echo_callback(_: &Event, message: &&str) {
@@ -173,6 +213,10 @@ pub extern fn efi_main() -> Status {
     }
 
     if let Err(num_errs) = test_events() {
+        total_errs += num_errs;
+    }
+
+    if let Err(num_errs) = test_memory() {
         total_errs += num_errs;
     }
 

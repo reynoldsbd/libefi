@@ -184,9 +184,7 @@ unsafe impl<T: ?Sized + Sync> Sync for OwnedPtr<T> { }
 
 
 /// A physical memory address
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
-pub struct PhysicalAddress(u64);
+pub type PhysicalAddress = u64;
 
 
 /// Status code
