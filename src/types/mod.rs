@@ -3,6 +3,7 @@
 //! This module contains FFI-safe types that can be used to interact with a UEFI platform.
 
 
+use runtime::SYSTEM_TABLE;
 use core::convert;
 use core::ops;
 use core::ptr::NonNull;
@@ -119,6 +120,7 @@ const HIGHBIT: usize = 0x8000_0000_0000_0000;
 
 
 /// Describes a region of memory
+#[derive(Debug)]
 #[repr(C)]
 pub struct MemoryDescriptor {
     pub memory_type: MemoryType,
@@ -129,12 +131,50 @@ pub struct MemoryDescriptor {
 }
 
 
+/// Describes the system's current memory configuration
+#[derive(Debug)]
+pub struct MemoryMap {
+    buffer: *mut MemoryDescriptor,
+    descriptor_size: usize,
+    descriptor_version: u32,
+    pub key: usize,
+    pub size: usize,
+}
+
+impl ops::Drop for MemoryMap {
+
+    fn drop(&mut self) {
+
+        SYSTEM_TABLE.boot_services.free_pool(self.buffer as *mut u8)
+            .expect("failed to free pool memory for MemoryMap");
+    }
+}
+
+impl ops::Index<usize> for MemoryMap {
+    type Output = MemoryDescriptor;
+
+    fn index(&self, index: usize) -> &MemoryDescriptor {
+
+        if index > self.size {
+            panic!("MemoryMap index out of bounds");
+        }
+
+        // It would be convenient to use the offset method here, but descriptor_size may be variable
+        unsafe {
+            let addr = (self.buffer as usize) + (index * self.descriptor_size);
+            (addr as *mut MemoryDescriptor).as_ref().unwrap()
+        }
+    }
+}
+
+
 /// Type of memory
 ///
 /// TODO:
 ///
 /// * UEFI does not specify concrete values for this enum, just a C `typedef enum` (and the use of
 ///   u32 in function signatures). All we can do here is `repr(u32)` and hope for the best
+#[derive(Debug)]
 #[repr(u32)]
 pub enum MemoryType {
     EfiReservedMemoryType,
@@ -188,7 +228,7 @@ pub type PhysicalAddress = u64;
 
 
 /// Status code
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(usize)]
 pub enum Status {
     Success = 0,
@@ -278,5 +318,4 @@ pub enum TPL {
 
 
 /// A virtual memory address
-#[repr(C)]
-pub struct VirtualAddress(u64);
+pub type VirtualAddress = u64;

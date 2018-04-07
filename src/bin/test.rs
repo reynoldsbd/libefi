@@ -221,6 +221,19 @@ fn test_memory() -> Result<(), usize> {
         },
     }
 
+    efi_println!("    test memory map");
+    match SYSTEM_TABLE.boot_services.get_memory_map() {
+        Ok(map) => {
+            efi_println!("#   memory map: {:?}", map);
+            efi_println!("#   first entry: {:?}", map[0]);
+        },
+        Err(err) => {
+            efi_println!("!   failed to get memory map");
+            efi_println!("!   {:?}", err);
+            num_errs += 1;
+        },
+    }
+
     if num_errs > 0 {
         Err(num_errs)
     } else {

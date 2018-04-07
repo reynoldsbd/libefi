@@ -8,6 +8,8 @@ use super::{
     Event,
     EventType,
     Handle,
+    MemoryDescriptor,
+    MemoryMap,
     MemoryType,
     OwnedPtr,
     PhysicalAddress,
@@ -164,7 +166,7 @@ pub struct BootServices {
     ) -> Status,
     pub _get_memory_map: extern "win64" fn(
         memory_map_size: &mut usize,
-        memory_map: &mut usize, // TODO
+        memory_map: *mut MemoryDescriptor,
         map_key: &mut usize,
         descriptor_size: &mut usize,
         descriptor_version: &mut u32
@@ -347,6 +349,51 @@ impl BootServices {
         (self._free_pages)(memory, pages)
             .as_result()
             .map(|_| ())
+    }
+
+    /// Returns the current memory map
+    pub fn get_memory_map(&self) -> Result<MemoryMap, Status> {
+
+        let mut map = MemoryMap {
+            buffer: 0 as *mut MemoryDescriptor,
+            descriptor_size: 0,
+            descriptor_version: 0,
+            key: 0,
+            size: 0,
+        };
+
+        // Make a dummy call to _get_memory_map to get details about descriptor and map size
+        let res = (self._get_memory_map)(
+            &mut map.size,
+            map.buffer,
+            &mut map.key,
+            &mut map.descriptor_size,
+            &mut map.descriptor_version
+        );
+        if res != Status::BufferTooSmall {
+            return Err(res);
+        }
+
+        // Get a suitably-sized buffer with a little breathing room
+        map.size += (map.descriptor_size * 3);
+        map.buffer = self.allocate_pool(
+            MemoryType::EfiLoaderData,
+            map.size
+        )? as *mut MemoryDescriptor;
+
+        // Make the true call to _get_memory_map with a real buffer
+        (self._get_memory_map)(
+            &mut map.size,
+            map.buffer,
+            &mut map.key,
+            &mut map.descriptor_size,
+            &mut map.descriptor_version
+        )
+            .as_result()?;
+
+        // Fix up map.size and return
+        map.size = map.size / map.descriptor_size;
+        Ok(map)
     }
 
     /// Allocates pool memory
