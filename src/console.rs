@@ -5,10 +5,12 @@ use core::fmt;
 
 use protocols::InputKey;
 use runtime::SYSTEM_TABLE;
-use types::{
-    Color,
-    Event,
-    Status,
+use {
+    boot_services::Event,
+    protocols::Color,
+    types::{
+        Status,
+    }
 };
 
 

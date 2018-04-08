@@ -5,7 +5,6 @@
 #![no_std]
 
 
-#[macro_use]
 extern crate alloc;
 #[macro_use]
 extern crate bitflags;
@@ -14,11 +13,16 @@ extern crate rlibc;
 extern crate spin;
 
 
+pub mod boot_services;
 #[macro_use]
 pub mod console;
 pub mod protocols;
 pub mod runtime;
+pub mod runtime_services;
+mod system_table;
 pub mod types;
+
+pub use system_table::SystemTable;
 
 /// Static instance of Allocator used as the global allocator
 ///

@@ -2,31 +2,35 @@
 //!
 //! This module contains the minimal runtime needed to host a Rust application in a UEFI
 //! environment.
-//!
-//! TODO:
-//!
-//! * ensure the correct lang_items are available and fully implemented (esp. panic_format)
 
 
-use alloc::heap;
-use alloc::heap::{
-    AllocErr,
-    Layout,
+use {
+    boot_services::{
+        AllocateType,
+        MemoryType,
+    },
+    SystemTable,
+    types::{
+        Handle,
+        PhysicalAddress,
+        Status,
+    },
 };
 
-use core::fmt;
-use core::ops;
+use alloc::{
+    heap,
+    heap::{
+        AllocErr,
+        Layout,
+    },
+};
+
+use core::{
+    fmt,
+    ops,
+};
 
 use spin::RwLock;
-
-use types::{
-    AllocateType,
-    Handle,
-    MemoryType,
-    PhysicalAddress,
-    Status,
-    SystemTable,
-};
 
 
 extern {
@@ -123,12 +127,12 @@ unsafe impl<'a> heap::Alloc for &'a PageAllocator {
         let mut addr: PhysicalAddress = 1;
         let res = SYSTEM_TABLE.boot_services.allocate_pages(
             AllocateType::AllocateAnyPages,
-            MemoryType::EfiLoaderData,
+            MemoryType::LoaderData,
             num_pages,
             &mut addr
         );
 
-        if let Err(err) = res {
+        if let Err(_) = res {
             Err(AllocErr::Exhausted {
                 request: layout
             })

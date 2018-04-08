@@ -1,10 +1,11 @@
-use types::{
-    Bool,
-    Char16,
-    Color,
-    Event,
-    OwnedPtr,
-    Status,
+use {
+    boot_services::Event,
+    types::{
+        Bool,
+        Char16,
+        OwnedPtr,
+        Status,
+    },
 };
 
 
@@ -239,6 +240,44 @@ fn exec_with_str<F>(string: &str, f: F) -> Result<(), Status>
     }
 
     Ok(())
+}
+
+
+/// Colors supported by the UEFI console
+#[derive(Clone, Copy, Debug)]
+#[repr(usize)]
+pub enum Color {
+    Black = 0x00,
+    Blue = 0x01,
+    Green = 0x02,
+    Cyan = 0x03,
+    Red = 0x04,
+    Magenta = 0x05,
+    Brown = 0x06,
+    LightGray = 0x07,
+    DarkGray = 0x08,
+    LightBlue = 0x09,
+    LightGreen = 0x0a,
+    LightCyan = 0x0b,
+    LightRed = 0x0c,
+    LightMagenta = 0x0d,
+    Yellow = 0x0e,
+    White = 0x0f,
+}
+
+impl Color {
+
+    /// Tells whether this is a legal background color
+    ///
+    /// According to the UEFI spec, only certain colors may be legally used for the console's
+    /// background.
+    pub fn is_background(&self) -> bool {
+
+        match *self as usize {
+            0x00...0x07 => true,
+            _ => false,
+        }
+    }
 }
 
 

@@ -11,17 +11,21 @@ use alloc::boxed::Box;
 
 use core::slice;
 
-use efi::console;
-use efi::runtime::SYSTEM_TABLE;
-use efi::types::{
-    AllocateType,
-    Color,
-    Event,
-    EventType,
-    MemoryType,
-    PhysicalAddress,
-    Status,
-    TPL,
+use efi::{
+    boot_services::{
+        AllocateType,
+        Event,
+        EventType,
+        MemoryType,
+        TPL,
+    },
+    console,
+    protocols::Color,
+    runtime::SYSTEM_TABLE,
+    types::{
+        PhysicalAddress,
+        Status,
+    },
 };
 
 
@@ -171,7 +175,7 @@ fn test_memory() -> Result<(), usize> {
     let mut addr: PhysicalAddress = 1;
     let res = SYSTEM_TABLE.boot_services.allocate_pages(
         AllocateType::AllocateAnyPages,
-        MemoryType::EfiLoaderData,
+        MemoryType::LoaderData,
         1,
         &mut addr
     );
@@ -198,7 +202,7 @@ fn test_memory() -> Result<(), usize> {
     }
 
     efi_println!("    test pool allocation");
-    let res = SYSTEM_TABLE.boot_services.allocate_pool(MemoryType::EfiLoaderData, 128);
+    let res = SYSTEM_TABLE.boot_services.allocate_pool(MemoryType::LoaderData, 128);
     match res {
         Ok(buffer) => {
             efi_println!("#   pool allocated at {:p}", buffer);
