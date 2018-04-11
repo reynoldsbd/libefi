@@ -2,11 +2,14 @@
 
 mod events;
 mod memory;
+mod protocols;
 
 pub use self::events::*;
 pub use self::memory::*;
+pub use self::protocols::*;
 
 use types::{
+    Handle,
     PhysicalAddress,
     Status,
     TableHeader,
@@ -80,7 +83,13 @@ pub struct BootServices {
     pub _handle_protocol: extern "win64" fn(),
     reserved: AtomicPtr<()>,
     pub _register_protocol_notify: extern "win64" fn(),
-    pub _locate_handle: extern "win64" fn(),
+    pub _locate_handle: extern "win64" fn(
+        search_type: SearchType,
+        protocol: *const Guid,
+        search_key: *const (),
+        buffer_size: &mut usize,
+        buffer: *mut Handle
+    ) -> Status,
     pub _locate_device_path: extern "win64" fn(),
     pub _install_configuration_table: extern "win64" fn(),
 
@@ -101,8 +110,20 @@ pub struct BootServices {
     pub _disconnect_controller: extern "win64" fn(),
 
     // Open and Close Protocol Services
-    pub _open_protocol: extern "win64" fn(),
-    pub _close_protocol: extern "win64" fn(),
+    pub _open_protocol: extern "win64" fn(
+        handle: Handle,
+        protocol: &Guid,
+        interface: &mut *mut (),
+        agent_handle: Handle,
+        controller_handle: Handle,
+        attributes: OpenProtocolAttributes
+    ) -> Status,
+    pub _close_protocol: extern "win64" fn(
+        handle: Handle,
+        protocol: &Guid,
+        agent_handle: Handle,
+        controller_handle: Handle
+    ) -> Status,
     pub _open_protocol_information: extern "win64" fn(),
 
     // Library Services

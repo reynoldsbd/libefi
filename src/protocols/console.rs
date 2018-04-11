@@ -1,5 +1,9 @@
 use {
-    boot_services::Event,
+    boot_services::{
+        Event,
+        Guid,
+        Protocol,
+    },
     types::{
         Bool,
         Char16,
@@ -43,6 +47,29 @@ impl SimpleTextInput {
             .map(|_| key)
     }
 }
+
+impl Protocol for SimpleTextInput {
+
+    fn guid() -> &'static Guid { &SIMPLE_TEXT_INPUT_GUID }
+}
+
+
+/// Static Guid for SimpleTextInput
+static SIMPLE_TEXT_INPUT_GUID: Guid = Guid {
+    data_1: 0x387477c1,
+    data_2: 0x69c7,
+    data_3: 0x11d2,
+    data_4: [
+        0x8e,
+        0x39,
+        0x00,
+        0xa0,
+        0xc9,
+        0x69,
+        0x72,
+        0x3b,
+    ],
+};
 
 
 /// Describes a keystroke

@@ -17,12 +17,12 @@ unsafe impl Sync for Event { }
 bitflags! {
     /// Specifies an Event's mode and attributes
     pub struct EventType: u32 {
-        const Time = 0x8000_0000;
-        const Runtime = 0x4000_0000;
-        const NotifyWait = 0x0000_0100;
-        const NotifySignal = 0x0000_0200;
-        const SignalExitBootServices = 0x0000_0201;
-        const SignalVirtualAddressChange = 0x6000_0202;
+        const TIMER = 0x8000_0000;
+        const RUNTIME = 0x4000_0000;
+        const NOTIFY_WAIT = 0x0000_0100;
+        const NOTIFY_SIGNAL = 0x0000_0200;
+        const SIGNAL_EXIT_BOOT_SERVICES = 0x0000_0201;
+        const SIGNAL_VIRTUAL_ADDRESS_CHANGE = 0x6000_0202;
     }
 }
 

@@ -3,10 +3,11 @@
 //! This module contains FFI-safe types that can be used to interact with a UEFI platform.
 
 
-use core::convert;
-use core::ops;
-use core::ptr::NonNull;
-use core::sync::atomic::AtomicPtr;
+use core::{
+    convert,
+    ops,
+    ptr::Unique,
+};
 
 
 /// Logical boolean
@@ -33,7 +34,7 @@ pub type Char16 = u16;
 
 
 /// Opaque handle to some object
-pub type Handle = AtomicPtr<()>;
+pub type Handle = usize;
 
 
 /// Used to differentiate status codes
@@ -43,10 +44,18 @@ const HIGHBIT: usize = 0x8000_0000_0000_0000;
 /// Pointer to an owned item
 ///
 /// This is a custom smart-pointer type used to provide a safe interface over the pointers used in
-/// EFI tables. It allows only immutable dereferencing and panics if the underlying pointer is set
-/// to null.
+/// EFI tables. It allows only immutable dereferencing and panics if the underlying pointer is null.
 #[repr(C)]
-pub struct OwnedPtr<T: ?Sized>(Option<NonNull<T>>);
+pub struct OwnedPtr<T: ?Sized>(Option<Unique<T>>);
+
+impl<T: ?Sized> OwnedPtr<T> {
+
+    /// Creates a new OwnedPtr from the given raw pointer
+    pub(crate) unsafe fn new_unchecked(ptr: *mut T) -> OwnedPtr<T> {
+
+        OwnedPtr(Some(Unique::new_unchecked(ptr)))
+    }
+}
 
 impl<T: ?Sized> ops::Deref for OwnedPtr<T> {
     type Target = T;
@@ -56,7 +65,7 @@ impl<T: ?Sized> ops::Deref for OwnedPtr<T> {
         if let OwnedPtr(Some(ref ptr)) = *self {
             unsafe { return ptr.as_ref(); }
         } else {
-            panic!("attempt to dereference null owned ptr");
+            panic!("attempt to dereference null OwnedPtr");
         }
     }
 }

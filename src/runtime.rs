@@ -25,12 +25,7 @@ use alloc::{
     },
 };
 
-use core::{
-    fmt,
-    ops,
-};
-
-use spin::RwLock;
+use core::fmt;
 
 
 extern {
@@ -52,47 +47,36 @@ extern {
 /// internal static configuration and then calls into the main function.
 #[no_mangle]
 #[link_name = "_start"]
-pub unsafe extern "win64" fn _start(_image_handle: Handle, system_table: &'static SystemTable)
+pub unsafe extern "win64" fn _start(image_handle: Handle, system_table: &'static SystemTable)
     -> Status {
 
-    SYSTEM_TABLE.set(system_table);
+    _IMAGE_HANDLE = image_handle;
+    _SYSTEM_TABLE = system_table;
+
     efi_main()
 }
 
 
-/// TODO
-pub struct SystemTableWrapper(RwLock<Option<&'static SystemTable>>);
+/// Static storage for this image's Handle
+static mut _IMAGE_HANDLE: Handle = 0;
 
-impl SystemTableWrapper {
 
-    const fn new() -> SystemTableWrapper {
+/// Static storage for ref to this image's SystemTable
+static mut _SYSTEM_TABLE: *const SystemTable = 0 as *const SystemTable;
 
-        SystemTableWrapper(RwLock::new(None))
-    }
 
-    fn set(&self, system_table: &'static SystemTable) {
+lazy_static! {
 
-        *(self.0.write()) = Some(system_table);
-    }
+    /// Handle to the currently running image
+    pub static ref IMAGE_HANDLE: Handle = unsafe { _IMAGE_HANDLE };
+
+    /// SystemTable for the currently running image
+    pub static ref SYSTEM_TABLE: &'static SystemTable = unsafe {
+        _SYSTEM_TABLE
+            .as_ref()
+            .expect("SYSTEM_TABLE accessed before runtime initialization")
+    };
 }
-
-impl ops::Deref for SystemTableWrapper {
-    type Target = SystemTable;
-
-    fn deref(&self) -> &SystemTable {
-
-        self.0.read()
-            .expect("attempt to reference static runtime::SYSTEM_TABLE before initialization")
-    }
-}
-
-
-/// Static reference to this image's EFI SystemTable
-///
-/// Because one focus of this library is to provide user friendly abstractions over the EFI API,
-/// the runtime maintains an internal reference so it may call into the EFI system on behalf of the
-/// user.
-pub static SYSTEM_TABLE: SystemTableWrapper = SystemTableWrapper::new();
 
 
 /// Heap allocator for use in a pre-boot UEFI environment

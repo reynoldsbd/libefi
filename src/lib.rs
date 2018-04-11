@@ -1,7 +1,7 @@
 //! Crate for writing UEFI software using Rust
 
 
-#![feature(alloc, allocator_api, compiler_builtins_lib, const_fn, global_allocator, lang_items)]
+#![feature(alloc, allocator_api, compiler_builtins_lib, const_fn, global_allocator, lang_items, ptr_internals)]
 #![no_std]
 
 
@@ -9,6 +9,8 @@ extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 extern crate compiler_builtins;
+#[macro_use]
+extern crate lazy_static;
 extern crate rlibc;
 extern crate spin;
 

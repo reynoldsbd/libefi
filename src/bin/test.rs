@@ -17,11 +17,20 @@ use efi::{
         Event,
         EventType,
         MemoryType,
+        OpenProtocolAttributes,
+        Protocol,
+        SearchType,
         TPL,
     },
     console,
-    protocols::Color,
-    runtime::SYSTEM_TABLE,
+    protocols::{
+        SimpleTextInput,
+        Color,
+    },
+    runtime::{
+        IMAGE_HANDLE,
+        SYSTEM_TABLE,
+    },
     types::{
         PhysicalAddress,
         Status,
@@ -92,6 +101,7 @@ fn test_console() -> Result<(), usize> {
 fn test_events() -> Result<(), usize> {
 
     let mut num_errs = 0;
+    efi_println!("test events");
 
     efi_println!("    test creating simple event");
     let simple_result = SYSTEM_TABLE.boot_services.create_event(
@@ -136,7 +146,7 @@ fn test_events() -> Result<(), usize> {
 
     efi_println!("    test creating event with callback");
     let simple_result = SYSTEM_TABLE.boot_services.create_event(
-        EventType::NotifySignal,
+        EventType::NOTIFY_SIGNAL,
         TPL::Callback,
         echo_callback,
         &"callback message"
@@ -170,6 +180,7 @@ fn test_events() -> Result<(), usize> {
 fn test_memory() -> Result<(), usize> {
 
     let mut num_errs = 0;
+    efi_println!("test errors");
 
     efi_println!("    test page allocation");
     let mut addr: PhysicalAddress = 1;
@@ -254,6 +265,61 @@ fn test_memory() -> Result<(), usize> {
 }
 
 
+fn test_protocols() -> Result<(), usize> {
+
+    let mut num_errs = 0;
+    efi_println!("test protocols");
+
+    efi_println!("    test locate handle");
+    let guid = SimpleTextInput::guid();
+    match SYSTEM_TABLE.boot_services.locate_handle(SearchType::ByProtocol, Some(guid), None) {
+        Ok(handles) => {
+            efi_println!("#   found {} handles for protocol", handles.len());
+
+            efi_println!("    test open protocol");
+            let res = SYSTEM_TABLE.boot_services.open_protocol::<SimpleTextInput>(
+                handles[0],
+                *IMAGE_HANDLE,
+                0,
+                OpenProtocolAttributes::BY_HANDLE_PROTOCOL
+            );
+            match res {
+                Ok(interface) => {
+                    efi_println!("    test close protocol");
+                    let res = SYSTEM_TABLE.boot_services.close_protocol(
+                        handles[0],
+                        interface,
+                        *IMAGE_HANDLE,
+                        0
+                    );
+                    if let Err(err) = res {
+                        efi_println!("!   failed to close protocol");
+                        efi_println!("!   {:?}", err);
+                        num_errs += 1;
+                    }
+                },
+                Err(err) => {
+                    efi_println!("!   failed to open protocol");
+                    efi_println!("!   {:?}", err);
+                    num_errs += 1;
+                },
+            }
+        },
+        Err(err) => {
+            efi_println!("!   failed to locate handle");
+            efi_println!("!   {:?}", err);
+            num_errs += 1;
+        },
+    }
+
+    if num_errs > 0 {
+        Err(num_errs)
+    } else {
+        Ok(())
+    }
+}
+
+
 extern "win64" fn empty_callback(_: &Event, _: &()) { }
 
 extern "win64" fn echo_callback(_: &Event, message: &&str) {
@@ -276,6 +342,10 @@ pub extern fn efi_main() -> Status {
     }
 
     if let Err(num_errs) = test_memory() {
+        total_errs += num_errs;
+    }
+
+    if let Err(num_errs) = test_protocols() {
         total_errs += num_errs;
     }
 
