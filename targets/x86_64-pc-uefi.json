@@ -1,23 +1,22 @@
 {
-    "llvm-target": "x86_64-pc-windows-gnu",
+    "llvm-target": "x86_64-pc-windows-msvc",
     "target-endian": "little",
     "target-pointer-width": "64",
     "target-c-int-width": "32",
     "os": "none",
     "arch": "x86_64",
     "data-layout": "e-m:e-i64:64-f80:128-n8:16:32:64-S128",
-    "linker-flavor": "msvc",
     "executables": true,
     "disable-redzone": true,
     "panic-strategy": "abort",
-    "linker": "lld-link",
+    "linker-flavor": "lld-link",
     "pre-link-args": {
-        "msvc": [
+        "lld-link": [
             "/SUBSYSTEM:EFI_Application",
             "/ENTRY:_start"
         ]
     },
     "exe-suffix": ".efi",
     "position-independent-executables": "true",
-    "is-like-windows": true
+    "emit-debug-gdb-scripts": false
 }

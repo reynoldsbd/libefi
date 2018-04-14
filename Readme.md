@@ -41,31 +41,6 @@ Xargo is available via Cargo:
 $ cargo install xargo
 ```
 
-### LLD
-
-Rust's toolchain currently uses GNU ld to link programs. Unfortunately, ld typically isn't build
-with support for the PE32+ file format used by UEFI, so another linker must be used. LLVM's LLD
-version 6.0 or above is known to work for this purpose, and is readily available for most platforms.
-
-[This page](http://releases.llvm.org/download.html) links to pre-built binaries for supported
-platforms. Linux users may also have the option of using a package manager to download LLVM. In
-particular, the LLVM project provides [APT repositories](https://apt.llvm.org/) suitable for use on
-Debian and Ubuntu based systems.
-
-Once installed, ensure that the `lld-link` command is available in your shell of choice. The target
-specifications provided in this repo (see next section) are configured to use `lld-link` to link the
-final EFI image. To do this, you may need to create a symlink to the real LLD executable, or you can
-simply modify the target specification to point to the installed binary.
-
-> If using the above-linked APT repositories, the `lld-link` executable will have a version number
-> appended, e.g. `lld-link-6.0`. Rather than modifying the target spec to point to this binary, I
-> prefer creating a symlink:
->
-> ```bash
-> $ mkdir -p ~/.local/bin
-> $ ln -s /usr/bin/lld-link-6.0 ~/.local/bin/lld-link
-> ```
-
 ### Target Specification
 
 A target specification is a configuration file for the Rust toolchain. It's used to customize the
@@ -110,7 +85,7 @@ use efi::types::Status;
 pub extern fn efi_main() -> Status {
 
     // your code goes here
-    runtime::system_table().con_out.output_string("hello, world!\r\n");
+    runtime::SYSTEM_TABLE.con_out.output_string("hello, world!\r\n");
 
     Status::Success
 }

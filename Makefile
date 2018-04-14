@@ -1,6 +1,5 @@
 arch ?= x86_64
 profile ?= debug
-lld_link ?= lld-link
 ovmf ?= /usr/share/ovmf/OVMF.fd
 
 build_dir := target/$(arch)-pc-uefi/$(profile)
