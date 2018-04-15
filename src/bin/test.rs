@@ -6,7 +6,6 @@
 extern crate efi;
 
 use core::{
-    fmt,
     slice,
 };
 
@@ -270,10 +269,7 @@ fn test_protocols(image_handle: Handle, system_table: &SystemTable) -> Result<()
 
 extern "win64" fn empty_callback(_: &Event, _: &()) { }
 
-extern "win64" fn echo_callback(_: &Event, message: &&str) {
-
-    // efi_println!(system_table.con_out, "#   from callback: {}", message);
-}
+extern "win64" fn echo_callback(_: &Event, _: &&str) {}
 
 
 #[no_mangle]
