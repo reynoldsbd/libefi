@@ -1,3 +1,5 @@
+use core::fmt;
+
 use {
     boot_services::{
         Event,
@@ -211,6 +213,15 @@ impl SimpleTextOutput {
         (self._enable_cursor)(self, Bool::from(visible))
             .as_result()?;
         Ok(())
+    }
+}
+
+impl<'a> fmt::Write for &'a SimpleTextOutput {
+
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+
+        self.output_string(s)
+            .map_err(|_| fmt::Error)
     }
 }
 

@@ -9,8 +9,6 @@ use types::{
     Status,
 };
 
-use alloc::Vec;
-
 use core::{
     mem,
     slice,
@@ -61,12 +59,12 @@ pub enum SearchType {
 
 impl BootServices {
 
-    /// Returns a Vector of handles that support the specified protocols
+    /// Returns a slice of handles that support the specified protocols
     pub fn locate_handle(&self,
                          search_type: SearchType,
                          protocol: Option<&Guid>,
                          search_key: Option<*const ()>)
-        -> Result<Vec<Handle>, Status> {
+        -> Result<&mut [Handle], Status> {
 
         // Prepare arguments
         let protocol: *const Guid = protocol
@@ -87,19 +85,9 @@ impl BootServices {
         (self._locate_handle)(search_type, protocol, search_key, &mut buf_size, buf)
             .as_result()?;
 
-        // Transfer contents into a Vec so the caller doesn't have to worry about deallocation
+        // Return a slice over the contents
         let num_handles = buf_size / mem::size_of::<Handle>();
-        let mut handle_vec = Vec::with_capacity(num_handles);
-        unsafe {
-            let handle_slice = slice::from_raw_parts(buf, num_handles);
-            for &raw_handle in handle_slice {
-                handle_vec.push(raw_handle);
-            }
-        }
-
-        // Clean up the manually-allocated memory and return
-        self.free_pool(buf as *mut u8)?;
-        Ok(handle_vec)
+        Ok(unsafe { slice::from_raw_parts_mut(buf, num_handles) })
     }
 
     /// Opens the specified protocol on behalf of the calling agent

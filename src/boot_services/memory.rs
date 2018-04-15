@@ -1,7 +1,6 @@
 use super::BootServices;
 
 use {
-    runtime::SYSTEM_TABLE,
     types::{
         PhysicalAddress,
         Status,
@@ -42,15 +41,6 @@ pub struct MemoryMap {
     descriptor_version: u32,
     pub key: usize,
     pub size: usize,
-}
-
-impl ops::Drop for MemoryMap {
-
-    fn drop(&mut self) {
-
-        SYSTEM_TABLE.boot_services.free_pool(self.buffer as *mut u8)
-            .expect("failed to free pool memory for MemoryMap");
-    }
 }
 
 impl ops::Index<usize> for MemoryMap {

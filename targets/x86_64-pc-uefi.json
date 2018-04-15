@@ -13,7 +13,7 @@
     "pre-link-args": {
         "lld-link": [
             "/SUBSYSTEM:EFI_Application",
-            "/ENTRY:_start"
+            "/ENTRY:efi_main"
         ]
     },
     "exe-suffix": ".efi",

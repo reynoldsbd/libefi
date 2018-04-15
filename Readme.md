@@ -76,16 +76,19 @@ Second, add some crate attributes in *src/main.rs* and provide the expected entr
 
 
 extern crate efi;
-use efi::runtime;
-use efi::types::Status;
+use efi::types::{
+    Handle,
+    Status,
+    SystemTable,
+};
 
 
 /// EFI image entry point
 #[no_mangle]
-pub extern fn efi_main() -> Status {
+pub extern fn efi_main(image_handle: Handle, system_table: &SystemTable) -> Status {
 
     // your code goes here
-    runtime::SYSTEM_TABLE.con_out.output_string("hello, world!\r\n");
+    system_table.con_out.output_string("hello, world!\r\n");
 
     Status::Success
 }
