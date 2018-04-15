@@ -11,6 +11,7 @@ use core::{
 
 
 /// Logical boolean
+#[derive(Debug)]
 #[repr(u8)]
 pub enum Bool {
     False = 0,
@@ -49,6 +50,16 @@ const HIGHBIT: usize = 0x8000_0000_0000_0000;
 pub struct OwnedPtr<T: ?Sized>(Option<Unique<T>>);
 
 impl<T: ?Sized> OwnedPtr<T> {
+
+    /// Returns an underlying raw pointer
+    pub fn as_mut_ptr(&self) -> *mut T {
+
+        if let OwnedPtr(Some(ref ptr)) = *self {
+            return ptr.as_ptr();
+        } else {
+            panic!("attempt to read null OwnedPtr");
+        }
+    }
 
     /// Creates a new OwnedPtr from the given raw pointer
     pub(crate) unsafe fn new_unchecked(ptr: *mut T) -> OwnedPtr<T> {

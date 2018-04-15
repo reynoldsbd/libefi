@@ -9,13 +9,23 @@ pub use self::memory::*;
 pub use self::protocols::*;
 
 use types::{
+    Char16,
     Handle,
+    OwnedPtr,
     PhysicalAddress,
     Status,
     TableHeader,
 };
 
-use core::sync::atomic::AtomicPtr;
+use core::{
+    char::{
+        decode_utf16,
+        REPLACEMENT_CHARACTER,
+    },
+    slice,
+    str::from_utf8_unchecked_mut,
+    sync::atomic::AtomicPtr,
+};
 
 
 /// Contains pointers to all of the boot services
@@ -140,4 +150,74 @@ pub struct BootServices {
     pub _copy_mem: extern "win64" fn(),
     pub _set_mem: extern "win64" fn(),
     pub _create_event_ex: extern "win64" fn(),
+}
+
+
+/// Encodes the given str to UTF-16 code units
+///
+/// The returned pointer points to a newly-allocated buffer that should be freed
+pub fn str_to_utf16(src: &str, boot_services: &BootServices) -> Result<*mut Char16, Status> {
+
+    let buf_len: usize = src
+        .chars()
+        .map(|c| c.len_utf16() * 2)
+        .sum();
+    let buf: &mut [u16] = unsafe {
+        let ptr = boot_services.allocate_pool(MemoryType::LoaderData, buf_len)?;
+        slice::from_raw_parts_mut(ptr as *mut u16, buf_len / 2)
+    };
+
+    let mut temp_buf = [0u16; 2];
+    let mut current_index = 0;
+    for c in src.chars() {
+        let units = c.encode_utf16(&mut temp_buf);
+        for i in 0..units.len() {
+            buf[current_index] = units[i];
+            current_index += 1;
+        }
+    }
+
+    Ok(buf.as_mut_ptr())
+}
+
+
+/// Decodes a str from the given UTF-16 code units
+///
+/// The returned pointer points to a newly allocated buffer that should be freed
+pub fn utf16_to_str(src: &[Char16], boot_services: &BootServices)
+    -> Result<OwnedPtr<str>, Status> {
+
+    // Create an iterator of Rust `char` over the UTF-16 slice
+    let chars = decode_utf16(
+            src.iter()
+                .cloned()
+                .take_while(|c| *c != 0x0000) // stop when we encounter a null code unit
+        )
+        .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER));
+
+    // Allocate a buffer large enough to hold the string when converted into UTF-8 code units
+    let buf_len: usize = chars
+        .clone()
+        .map(|c| c.len_utf8())
+        .sum();
+    let buf: &mut [u8] = unsafe {
+        let ptr = boot_services.allocate_pool(MemoryType::LoaderData, buf_len)?;
+        slice::from_raw_parts_mut(ptr, buf_len)
+    };
+
+    // Iterate over the old string, placing the re-encoded bytes into the new buffer
+    let mut temp_buf = [0u8; 4];
+    let mut current_index = 0;
+    for c in chars {
+        let bytes = c.encode_utf8(&mut temp_buf).bytes();
+        for b in bytes {
+            buf[current_index] = b;
+            current_index += 1;
+        }
+    }
+
+    // Re-interpret the buffer as a str behind a custom pointer
+    unsafe {
+        Ok(OwnedPtr::new_unchecked(from_utf8_unchecked_mut(buf) as *mut str))
+    }
 }

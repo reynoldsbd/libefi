@@ -6,10 +6,12 @@
 extern crate efi;
 
 use core::{
+    fmt,
     slice,
 };
 
 use efi::{
+    boot_services,
     boot_services::{
         AllocateType,
         Event,
@@ -21,6 +23,8 @@ use efi::{
         TPL,
     },
     protocols::{
+        FileSystemInfo,
+        SimpleFileSystem,
         SimpleTextInput,
     },
     SystemTable,
@@ -47,6 +51,56 @@ macro_rules! efi_print {
 macro_rules! efi_println {
     ($con_out:expr, $fmt:expr) => (efi_print!($con_out, concat!($fmt, "\r\n")));
     ($con_out:expr, $fmt:expr, $($arg:tt)*) => (efi_print!($con_out, concat!($fmt, "\r\n"), $($arg)*));
+}
+
+
+fn test_utf16_conversion(system_table: &SystemTable) -> Result<(), usize> {
+
+    let mut num_errs = 0;
+    efi_println!(system_table.con_out, "test UTF-16 conversion");
+
+    efi_println!(system_table.con_out, "    test str to UTF-16");
+    let src = "some string";
+    match boot_services::str_to_utf16(src, &*(system_table.boot_services)) {
+        Ok(ptr) => {
+            efi_println!(system_table.con_out, "#   ptr: {:?}", ptr);
+            if let Err(err) = system_table.boot_services.free_pool(ptr as *mut u8) {
+                efi_println!(system_table.con_out, "!   failed to free converted UTF-16 buffer");
+                efi_println!(system_table.con_out, "!   {:?}", err);
+                num_errs += 1;
+            }
+        },
+        Err(err) => {
+            efi_println!(system_table.con_out, "!   failed to convert str to UTF-16");
+            efi_println!(system_table.con_out, "!   {:?}", err);
+            num_errs += 1;
+        }
+    }
+
+    efi_println!(system_table.con_out, "    test UTF-16 to str");
+    // Null-terminated "other string"
+    let src: [u16; 13] = [0x6f,0x74,0x68,0x65,0x72,0x20,0x73,0x74,0x72,0x69,0x6e,0x67,0x00];
+    match boot_services::utf16_to_str(&src, &*(system_table.boot_services)) {
+        Ok(string) => {
+            efi_println!(system_table.con_out, "#   string: {:?}", &*string);
+            if let Err(err) = system_table.boot_services.free_pool(string.as_mut_ptr() as *mut u8) {
+                efi_println!(system_table.con_out, "!   failed to free converted str buffer");
+                efi_println!(system_table.con_out, "!   {:?}", err);
+                num_errs += 1;
+            }
+        },
+        Err(err) => {
+            efi_println!(system_table.con_out, "!   failed to convert UTF-16 to str");
+            efi_println!(system_table.con_out, "!   {:?}", err);
+            num_errs += 1;
+        }
+    }
+
+    if num_errs > 0 {
+        Err(num_errs)
+    } else {
+        Ok(())
+    }
 }
 
 
@@ -267,6 +321,97 @@ fn test_protocols(image_handle: Handle, system_table: &SystemTable) -> Result<()
 }
 
 
+fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), usize> {
+
+    let mut num_errs = 0;
+    efi_println!(system_table.con_out, "test files");
+
+    efi_println!(system_table.con_out, "    test enumerating volumes");
+    let guid = SimpleFileSystem::guid();
+    match system_table.boot_services.locate_handle(SearchType::ByProtocol, Some(guid), None) {
+        Ok(handles) => {
+            for handle in handles {
+                let res = system_table.boot_services.open_protocol::<SimpleFileSystem>(
+                    *handle,
+                    image_handle,
+                    0,
+                    OpenProtocolAttributes::BY_HANDLE_PROTOCOL
+                );
+                match res {
+                    Ok(file_system) => {
+                        match file_system.open_volume() {
+                            Ok(root) => {
+                                let res = root.get_info::<FileSystemInfo>(
+                                    &*(system_table.boot_services)
+                                );
+                                match res {
+                                    Ok(fs_info) => {
+                                        let volume_label = fs_info.volume_label(&*(system_table.boot_services))
+                                            .unwrap();
+                                        efi_println!(system_table.con_out, "#   volume label: {:?}", &*volume_label);
+
+                                        if let Err(err) = system_table.boot_services.free_pool(volume_label.as_mut_ptr() as *mut u8) {
+                                            efi_println!(system_table.con_out, "!   failed to free volume label buffer");
+                                            efi_println!(system_table.con_out, "!   {:?}", err);
+                                            num_errs += 1;
+                                        }
+                                    },
+                                    Err(err) => {
+                                        efi_println!(system_table.con_out, "!   failed to get file system info");
+                                        efi_println!(system_table.con_out, "!   {:?}", err);
+                                        num_errs += 1;
+                                    }
+                                }
+
+                                if let Err(err) = root.close() {
+                                    efi_println!(system_table.con_out, "!   failed to close volume");
+                                    efi_println!(system_table.con_out, "!   {:?}", err);
+                                    num_errs += 1;
+                                }
+                            },
+                            Err(err) => {
+                                efi_println!(system_table.con_out, "!   failed to open volume");
+                                efi_println!(system_table.con_out, "!   {:?}", err);
+                                num_errs += 1;
+                            },
+                        }
+
+                        let res = system_table.boot_services.close_protocol(
+                            *handle,
+                            file_system,
+                            image_handle,
+                            0
+                        );
+                        if let Err(err) = res {
+                            efi_println!(system_table.con_out, "!   failed to close file system protocol");
+                            efi_println!(system_table.con_out, "!   {:?}", err);
+                            num_errs += 1;
+                        }
+                    },
+                    Err(err) => {
+                        efi_println!(system_table.con_out, "!   failed to open file system protocol");
+                        efi_println!(system_table.con_out, "!   {:?}", err);
+                        num_errs += 1;
+                        break;
+                    },
+                }
+            }
+        },
+        Err(err) => {
+            efi_println!(system_table.con_out, "!   failed to get volume handles");
+            efi_println!(system_table.con_out, "!   {:?}", err);
+            num_errs += 1;
+        }
+    }
+
+    if num_errs > 0 {
+        Err(num_errs)
+    } else {
+        Ok(())
+    }
+}
+
+
 extern "win64" fn empty_callback(_: &Event, _: &()) { }
 
 extern "win64" fn echo_callback(_: &Event, _: &&str) {}
@@ -277,6 +422,10 @@ pub extern fn efi_main(image_handle: Handle, system_table: &SystemTable) -> Stat
 
     let mut total_errs = 0;
 
+    unsafe {
+        SYSTEM_TABLE = system_table;
+    }
+
     if let Err(num_errs) = test_events(system_table) {
         total_errs += num_errs;
     }
@@ -286,6 +435,14 @@ pub extern fn efi_main(image_handle: Handle, system_table: &SystemTable) -> Stat
     }
 
     if let Err(num_errs) = test_protocols(image_handle, system_table) {
+        total_errs += num_errs;
+    }
+
+    if let Err(num_errs) = test_utf16_conversion(system_table) {
+        total_errs += num_errs;
+    }
+
+    if let Err(num_errs) = test_files(image_handle, system_table) {
         total_errs += num_errs;
     }
 
@@ -300,11 +457,19 @@ pub extern fn efi_main(image_handle: Handle, system_table: &SystemTable) -> Stat
 #[no_mangle]
 pub extern fn eh_personality() {}
 
+static mut SYSTEM_TABLE: *const SystemTable = 0 as *const SystemTable;
 
 /// Handles a panic by printing the error message to the screen
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub extern fn panic_fmt() -> ! {
+pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str, line: u32, col: u32) -> ! {
 
+    unsafe {
+        let system_table = SYSTEM_TABLE
+            .as_ref()
+            .unwrap();
+        efi_println!(system_table.con_out, "panic in file {}:{}:{}", file, line, col);
+        efi_println!(system_table.con_out, "{}", msg);
+    }
     loop {}
 }

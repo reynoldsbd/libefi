@@ -40,7 +40,7 @@ $(esp_image): $(efi_app)
 	@cp $(efi_app) $(build_dir)/esp/EFI/BOOT/BOOTX64.EFI
 	@rm -f $(esp_image)
 	@dd if=/dev/zero of=$(esp_image) bs=1M count=64
-	@mkfs.vfat -F 32 $(esp_image)
+	@mkfs.vfat -F 32 $(esp_image) -n EFISys
 	@mcopy -i $(esp_image) -s $(build_dir)/esp/EFI ::
 
 
