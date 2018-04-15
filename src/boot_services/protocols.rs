@@ -99,17 +99,17 @@ impl BootServices {
         -> Result<OwnedPtr<T>, Status>
         where T: Protocol {
 
-        let interface = 0 as *mut T;
+        let mut interface = 0 as *mut ();
         (self._open_protocol)(
             handle,
             T::guid(),
-            &mut (interface as *mut ()),
+            &mut interface,
             agent_handle,
             controller_handle,
             attributes
         )
             .as_result()
-            .map(|_| unsafe { OwnedPtr::new_unchecked(interface) })
+            .map(|_| unsafe { OwnedPtr::new_unchecked(interface as *mut T) })
     }
 
     /// Closes the specified protocol that was previously opened on the specified `handle`
