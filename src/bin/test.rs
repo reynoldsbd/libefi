@@ -406,7 +406,21 @@ fn test_files_2(root: &File, system_table: &SystemTable) -> Result<(), usize> {
     let path = boot_services::str_to_utf16("\\EFI\\test.txt", &system_table.boot_services)
         .unwrap();
     match root.open(&path, FileMode::READ, FileAttributes::empty()) {
-        Ok(file) => {},
+        Ok(file) => {
+            efi_println!(system_table.con_out, "    test read from file");
+            let mut buf = [0u8; 20];
+            match file.read(&mut buf) {
+                Ok(len) => {
+                    efi_println!(system_table.con_out, "#   read {} bytes", len);
+                    efi_println!(system_table.con_out, "#   data: {:?}", &buf[0..len]);
+                },
+                Err(err) => {
+                    efi_println!(system_table.con_out, "!   failed to read file");
+                    efi_println!(system_table.con_out, "!   {:?}", err);
+                    num_errs += 1;
+                },
+            }
+        },
         Err(err) => {
             efi_println!(system_table.con_out, "!   failed to open file");
             efi_println!(system_table.con_out, "!   {:?}", err);

@@ -35,7 +35,7 @@ pub struct File {
     ) -> Status,
     pub _close: extern "win64" fn(this: &File) -> Status,
     pub _delete: extern "win64" fn() -> Status,
-    pub _read: extern "win64" fn() -> Status,
+    pub _read: extern "win64" fn(this: &File, buffer_size: &mut usize, buffer: *mut u8) -> Status,
     pub _write: extern "win64" fn() -> Status,
     pub _get_position: extern "win64" fn() -> Status,
     pub _set_position: extern "win64" fn() -> Status,
@@ -74,6 +74,15 @@ impl File {
         (self._close)(&self)
             .as_result()
             .map(|_| ())
+    }
+
+    /// Reads data from this file
+    pub fn read(&self, buf: &mut [u8]) -> Result<usize, Status> {
+
+        let mut len = buf.len();
+        (self._read)(self, &mut len, buf.as_mut_ptr())
+            .as_result()
+            .map(|_| len)
     }
 
     /// Returns information about a file
