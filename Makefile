@@ -38,6 +38,7 @@ $(efi_app): $(shell find src -type f)
 $(esp_image): $(efi_app)
 	@mkdir -p $(build_dir)/esp/EFI/BOOT
 	@cp $(efi_app) $(build_dir)/esp/EFI/BOOT/BOOTX64.EFI
+	@echo "hello, world!" > $(build_dir)/esp/EFI/test.txt
 	@rm -f $(esp_image)
 	@dd if=/dev/zero of=$(esp_image) bs=1M count=64
 	@mkfs.vfat -F 32 $(esp_image) -n EFISys

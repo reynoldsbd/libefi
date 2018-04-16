@@ -26,7 +26,13 @@ use {
 #[repr(C)]
 pub struct File {
     pub revision: u64,
-    pub _open: extern "win64" fn() -> Status,
+    pub _open: extern "win64" fn(
+        this: &File,
+        new_handle: &mut *mut File,
+        file_name: *const Char16,
+        open_mode: FileMode,
+        attributes: FileAttributes
+    ) -> Status,
     pub _close: extern "win64" fn(this: &File) -> Status,
     pub _delete: extern "win64" fn() -> Status,
     pub _read: extern "win64" fn() -> Status,
@@ -45,15 +51,27 @@ pub struct File {
 
 impl File {
 
+    /// Opens a new file relative to this file's location
+    pub fn open(
+        &self,
+        file_name: &[Char16],
+        open_mode: FileMode,
+        attributes: FileAttributes
+    ) -> Result<OwnedPtr<File>, Status> {
+
+        let mut file = 0 as *mut File;
+        (self._open)(self, &mut file, file_name.as_ptr(), open_mode, attributes)
+            .as_result()
+            .map(|_| unsafe { OwnedPtr::new_unchecked(file) })
+    }
+
     /// Closes this file
     ///
-    /// # Safety
-    ///
-    /// This method is automatically called when a `File` is dropped, and should not be called
+    /// This method is automatically called when a `File` is dropped and need not be called
     /// directly.
-    pub unsafe fn close(&self) -> Result<(), Status> {
+    pub fn close(self) -> Result<(), Status> {
 
-        (self._close)(self)
+        (self._close)(&self)
             .as_result()
             .map(|_| ())
     }
@@ -87,7 +105,31 @@ impl Drop for File {
 
     fn drop(&mut self) {
 
-        self.close();
+        let _ = (self._close)(self);
+    }
+}
+
+
+bitflags! {
+    /// Attribute bits for a file
+    pub struct FileAttributes: u64 {
+        const READ_ONLY = 0x0000_0000_0000_0001;
+        const HIDDEN = 0x0000_0000_0000_0002;
+        const SYSTEM = 0x0000_0000_0000_0004;
+        const RESERVED = 0x0000_0000_0000_0008;
+        const DIRECTORY = 0x0000_0000_0000_0010;
+        const ARCHIVE = 0x0000_0000_0000_0020;
+        const VALID_ATTR = 0x0000_0000_0000_0037;
+    }
+}
+
+
+bitflags! {
+    /// Mode to open a file
+    pub struct FileMode: u64 {
+        const READ = 0x0000_0000_0000_0001;
+        const WRITE = 0x0000_0000_0000_0002;
+        const CREATE = 0x8000_0000_0000_0000;
     }
 }
 

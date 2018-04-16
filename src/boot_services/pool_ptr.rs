@@ -1,4 +1,5 @@
 use core::{
+    cmp::PartialEq,
     fmt,
     fmt::{
         Debug,
@@ -104,6 +105,19 @@ impl<'a, T: ?Sized + Iterator> Iterator for Pool<'a, T> {
     fn nth(&mut self, n: usize) -> Option<T::Item> {
 
         (**self).nth(n)
+    }
+}
+
+impl<'a, 'b, T: ?Sized + PartialEq> PartialEq<&'b T> for Pool<'a, T> {
+
+    fn eq(&self, other: &&'b T) -> bool {
+
+        PartialEq::eq(&**self, &**other)
+    }
+
+    fn ne(&self, other: &&'b T) -> bool {
+
+        PartialEq::ne(&**self,&** other)
     }
 }
 

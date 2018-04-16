@@ -23,6 +23,9 @@ use efi::{
         TPL,
     },
     protocols::{
+        File,
+        FileMode,
+        FileAttributes,
         FileSystemInfo,
         SimpleFileSystem,
         SimpleTextInput,
@@ -338,6 +341,12 @@ fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), us
                                         let volume_label = fs_info.volume_label(&*(system_table.boot_services))
                                             .unwrap();
                                         efi_println!(system_table.con_out, "#   volume label: {}", volume_label);
+
+                                        if volume_label == "EFISys" {
+                                            if let Err(err_count) = test_files_2(&root, system_table) {
+                                                num_errs += err_count;
+                                            }
+                                        }
                                     },
                                     Err(err) => {
                                         efi_println!(system_table.con_out, "!   failed to get file system info");
@@ -379,6 +388,30 @@ fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), us
             efi_println!(system_table.con_out, "!   {:?}", err);
             num_errs += 1;
         }
+    }
+
+    if num_errs > 0 {
+        Err(num_errs)
+    } else {
+        Ok(())
+    }
+}
+
+
+fn test_files_2(root: &File, system_table: &SystemTable) -> Result<(), usize> {
+
+    let mut num_errs = 0;
+
+    efi_println!(system_table.con_out, "    test open file");
+    let path = boot_services::str_to_utf16("\\EFI\\test.txt", &system_table.boot_services)
+        .unwrap();
+    match root.open(&path, FileMode::READ, FileAttributes::empty()) {
+        Ok(file) => {},
+        Err(err) => {
+            efi_println!(system_table.con_out, "!   failed to open file");
+            efi_println!(system_table.con_out, "!   {:?}", err);
+            num_errs += 1;
+        },
     }
 
     if num_errs > 0 {
