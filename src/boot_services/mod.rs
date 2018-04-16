@@ -162,10 +162,13 @@ pub fn str_to_utf16<'a>(
 
     // Allocate a slice of Char16 from pool memory
     // This needs to be done manually because a slice is not Sized
-    let buf_len: usize = src
+    let mut buf_len: usize = src
         .chars()
+        // 2 bytes per UTF-16 unit
         .map(|c| c.len_utf16() * 2)
         .sum();
+    // An extra 2 bytes for a null terminator
+    buf_len += 2;
     let mut buf = unsafe {
         let ptr = boot_services.allocate_pool(MemoryType::LoaderData, buf_len)?;
         Pool::new_unchecked(
@@ -184,6 +187,9 @@ pub fn str_to_utf16<'a>(
             current_index += 1;
         }
     }
+
+    // Add a null terminator
+    buf[current_index] = 0u16;
 
     Ok(buf)
 }
