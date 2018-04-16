@@ -2,16 +2,17 @@
 
 mod events;
 mod memory;
+mod pool_ptr;
 mod protocols;
 
 pub use self::events::*;
 pub use self::memory::*;
+pub use self::pool_ptr::*;
 pub use self::protocols::*;
 
 use types::{
     Char16,
     Handle,
-    OwnedPtr,
     PhysicalAddress,
     Status,
     TableHeader,
@@ -154,19 +155,26 @@ pub struct BootServices {
 
 
 /// Encodes the given str to UTF-16 code units
-///
-/// The returned pointer points to a newly-allocated buffer that should be freed
-pub fn str_to_utf16(src: &str, boot_services: &BootServices) -> Result<*mut Char16, Status> {
+pub fn str_to_utf16<'a>(
+    src: &str,
+    boot_services: &'a BootServices
+) -> Result<Pool<'a, [Char16]>, Status> {
 
+    // Allocate a slice of Char16 from pool memory
+    // This needs to be done manually because a slice is not Sized
     let buf_len: usize = src
         .chars()
         .map(|c| c.len_utf16() * 2)
         .sum();
-    let buf: &mut [u16] = unsafe {
+    let mut buf = unsafe {
         let ptr = boot_services.allocate_pool(MemoryType::LoaderData, buf_len)?;
-        slice::from_raw_parts_mut(ptr as *mut u16, buf_len / 2)
+        Pool::new_unchecked(
+            slice::from_raw_parts_mut(ptr as *mut Char16, buf_len / 2),
+            boot_services
+        )
     };
 
+    // Copy encoded characters into the new slice
     let mut temp_buf = [0u16; 2];
     let mut current_index = 0;
     for c in src.chars() {
@@ -177,15 +185,15 @@ pub fn str_to_utf16(src: &str, boot_services: &BootServices) -> Result<*mut Char
         }
     }
 
-    Ok(buf.as_mut_ptr())
+    Ok(buf)
 }
 
 
 /// Decodes a str from the given UTF-16 code units
-///
-/// The returned pointer points to a newly allocated buffer that should be freed
-pub fn utf16_to_str(src: &[Char16], boot_services: &BootServices)
-    -> Result<OwnedPtr<str>, Status> {
+pub fn utf16_to_str<'a>(
+    src: &[Char16],
+    boot_services: &'a BootServices
+) -> Result<Pool<'a, str>, Status> {
 
     // Create an iterator of Rust `char` over the UTF-16 slice
     let chars = decode_utf16(
@@ -218,6 +226,6 @@ pub fn utf16_to_str(src: &[Char16], boot_services: &BootServices)
 
     // Re-interpret the buffer as a str behind a custom pointer
     unsafe {
-        Ok(OwnedPtr::new_unchecked(from_utf8_unchecked_mut(buf) as *mut str))
+        Ok(Pool::new_unchecked(from_utf8_unchecked_mut(buf), boot_services))
     }
 }

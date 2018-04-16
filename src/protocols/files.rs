@@ -1,5 +1,6 @@
 use core::{
     mem,
+    ops::Drop,
     slice,
 };
 
@@ -8,6 +9,7 @@ use {
         BootServices,
         Guid,
         MemoryType,
+        Pool,
         Protocol,
         utf16_to_str,
     },
@@ -44,7 +46,12 @@ pub struct File {
 impl File {
 
     /// Closes this file
-    pub fn close(&self) -> Result<(), Status> {
+    ///
+    /// # Safety
+    ///
+    /// This method is automatically called when a `File` is dropped, and should not be called
+    /// directly.
+    pub unsafe fn close(&self) -> Result<(), Status> {
 
         (self._close)(self)
             .as_result()
@@ -73,6 +80,14 @@ impl File {
         (self._get_info)(self, T::guid(), &mut buf_size, buf)
             .as_result()
             .map(|_| unsafe { OwnedPtr::new_unchecked(buf as *mut T) })
+    }
+}
+
+impl Drop for File {
+
+    fn drop(&mut self) {
+
+        self.close();
     }
 }
 
@@ -119,10 +134,10 @@ pub struct FileSystemInfo {
 impl FileSystemInfo {
 
     /// Gets the volume label
-    ///
-    /// The returned string is allocated in pool memory using the given BootServices, and should be
-    /// freed with a call to free_pool
-    pub fn volume_label(&self, boot_services: &BootServices) -> Result<OwnedPtr<str>, Status> {
+    pub fn volume_label<'a>(
+        &self,
+        boot_services: &'a BootServices
+    ) -> Result<Pool<'a, str>, Status> {
 
         let buf = unsafe {
             let buf_size = self._size - (mem::size_of::<FileSystemInfo>() - mem::size_of::<Char16>());

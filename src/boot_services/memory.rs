@@ -1,5 +1,7 @@
-use super::BootServices;
 
+use core::ops;
+
+use super::BootServices;
 use {
     types::{
         PhysicalAddress,
@@ -7,8 +9,6 @@ use {
         VirtualAddress,
     },
 };
-
-use core::ops;
 
 
 /// Type of memory allocation to perform
@@ -34,8 +34,8 @@ pub struct MemoryDescriptor {
 
 
 /// Describes the system's current memory configuration
-#[derive(Debug)]
-pub struct MemoryMap {
+pub struct MemoryMap<'a> {
+    boot_services: &'a BootServices,
     buffer: *mut MemoryDescriptor,
     descriptor_size: usize,
     descriptor_version: u32,
@@ -43,7 +43,16 @@ pub struct MemoryMap {
     pub size: usize,
 }
 
-impl ops::Index<usize> for MemoryMap {
+impl<'a> ops::Drop for MemoryMap<'a> {
+
+    fn drop(&mut self) {
+
+        self.boot_services.free_pool(self.buffer as *mut u8)
+            .expect("failed to deallocate MemoryMap");
+    }
+}
+
+impl<'a> ops::Index<usize> for MemoryMap<'a> {
     type Output = MemoryDescriptor;
 
     fn index(&self, index: usize) -> &MemoryDescriptor {
@@ -108,9 +117,10 @@ impl BootServices {
     }
 
     /// Returns the current memory map
-    pub fn get_memory_map(&self) -> Result<MemoryMap, Status> {
+    pub fn get_memory_map<'a>(&'a self) -> Result<MemoryMap<'a>, Status> {
 
         let mut map = MemoryMap {
+            boot_services: self,
             buffer: 0 as *mut MemoryDescriptor,
             descriptor_size: 0,
             descriptor_version: 0,

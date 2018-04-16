@@ -1,6 +1,7 @@
 use super::{
     BootServices,
     MemoryType,
+    Pool,
 };
 
 use types::{
@@ -60,11 +61,12 @@ pub enum SearchType {
 impl BootServices {
 
     /// Returns a slice of handles that support the specified protocols
-    pub fn locate_handle(&self,
-                         search_type: SearchType,
-                         protocol: Option<&Guid>,
-                         search_key: Option<*const ()>)
-        -> Result<&mut [Handle], Status> {
+    pub fn locate_handle<'a>(
+        &'a self,
+        search_type: SearchType,
+        protocol: Option<&Guid>,
+        search_key: Option<*const ()>)
+    -> Result<Pool<'a, [Handle]>, Status> {
 
         // Prepare arguments
         let protocol: *const Guid = protocol
@@ -87,7 +89,12 @@ impl BootServices {
 
         // Return a slice over the contents
         let num_handles = buf_size / mem::size_of::<Handle>();
-        Ok(unsafe { slice::from_raw_parts_mut(buf, num_handles) })
+        unsafe {
+            Ok(Pool::new_unchecked(
+                slice::from_raw_parts_mut(buf, num_handles),
+                self
+            ))
+        }
     }
 
     /// Opens the specified protocol on behalf of the calling agent

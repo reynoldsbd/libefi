@@ -62,13 +62,8 @@ fn test_utf16_conversion(system_table: &SystemTable) -> Result<(), usize> {
     efi_println!(system_table.con_out, "    test str to UTF-16");
     let src = "some string";
     match boot_services::str_to_utf16(src, &*(system_table.boot_services)) {
-        Ok(ptr) => {
-            efi_println!(system_table.con_out, "#   ptr: {:?}", ptr);
-            if let Err(err) = system_table.boot_services.free_pool(ptr as *mut u8) {
-                efi_println!(system_table.con_out, "!   failed to free converted UTF-16 buffer");
-                efi_println!(system_table.con_out, "!   {:?}", err);
-                num_errs += 1;
-            }
+        Ok(buf) => {
+            efi_println!(system_table.con_out, "#   buf: {:?}", buf);
         },
         Err(err) => {
             efi_println!(system_table.con_out, "!   failed to convert str to UTF-16");
@@ -82,12 +77,7 @@ fn test_utf16_conversion(system_table: &SystemTable) -> Result<(), usize> {
     let src: [u16; 13] = [0x6f,0x74,0x68,0x65,0x72,0x20,0x73,0x74,0x72,0x69,0x6e,0x67,0x00];
     match boot_services::utf16_to_str(&src, &*(system_table.boot_services)) {
         Ok(string) => {
-            efi_println!(system_table.con_out, "#   string: {:?}", &*string);
-            if let Err(err) = system_table.boot_services.free_pool(string.as_mut_ptr() as *mut u8) {
-                efi_println!(system_table.con_out, "!   failed to free converted str buffer");
-                efi_println!(system_table.con_out, "!   {:?}", err);
-                num_errs += 1;
-            }
+            efi_println!(system_table.con_out, "#   string: {}", string);
         },
         Err(err) => {
             efi_println!(system_table.con_out, "!   failed to convert UTF-16 to str");
@@ -248,7 +238,6 @@ fn test_memory(system_table: &SystemTable) -> Result<(), usize> {
     efi_println!(system_table.con_out, "    test memory map");
     match system_table.boot_services.get_memory_map() {
         Ok(map) => {
-            efi_println!(system_table.con_out, "#   memory map: {:?}", map);
             efi_println!(system_table.con_out, "#   first entry: {:?}", map[0]);
         },
         Err(err) => {
@@ -330,7 +319,7 @@ fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), us
     let guid = SimpleFileSystem::guid();
     match system_table.boot_services.locate_handle(SearchType::ByProtocol, Some(guid), None) {
         Ok(handles) => {
-            for handle in handles {
+            for handle in handles.iter() {
                 let res = system_table.boot_services.open_protocol::<SimpleFileSystem>(
                     *handle,
                     image_handle,
@@ -348,25 +337,13 @@ fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), us
                                     Ok(fs_info) => {
                                         let volume_label = fs_info.volume_label(&*(system_table.boot_services))
                                             .unwrap();
-                                        efi_println!(system_table.con_out, "#   volume label: {:?}", &*volume_label);
-
-                                        if let Err(err) = system_table.boot_services.free_pool(volume_label.as_mut_ptr() as *mut u8) {
-                                            efi_println!(system_table.con_out, "!   failed to free volume label buffer");
-                                            efi_println!(system_table.con_out, "!   {:?}", err);
-                                            num_errs += 1;
-                                        }
+                                        efi_println!(system_table.con_out, "#   volume label: {}", volume_label);
                                     },
                                     Err(err) => {
                                         efi_println!(system_table.con_out, "!   failed to get file system info");
                                         efi_println!(system_table.con_out, "!   {:?}", err);
                                         num_errs += 1;
                                     }
-                                }
-
-                                if let Err(err) = root.close() {
-                                    efi_println!(system_table.con_out, "!   failed to close volume");
-                                    efi_println!(system_table.con_out, "!   {:?}", err);
-                                    num_errs += 1;
                                 }
                             },
                             Err(err) => {
