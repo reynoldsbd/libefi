@@ -1,11 +1,13 @@
 //! EFI services available in a pre-boot environment
 
 mod events;
+mod image;
 mod memory;
 mod pool_ptr;
 mod protocols;
 
 pub use self::events::*;
+pub use self::image::*;
 pub use self::memory::*;
 pub use self::pool_ptr::*;
 pub use self::protocols::*;
@@ -109,7 +111,7 @@ pub struct BootServices {
     pub _start_image: extern "win64" fn(),
     pub _exit: extern "win64" fn(),
     pub _unload_image: extern "win64" fn(),
-    pub _exit_boot_services: extern "win64" fn(),
+    pub _exit_boot_services: extern "win64" fn(image_handle: Handle, map_key: usize) -> Status,
 
     // Miscellaneous Services
     pub _get_next_monotonic_count: extern "win64" fn(),
@@ -149,7 +151,7 @@ pub struct BootServices {
 
     // Miscellaneous Services
     pub _copy_mem: extern "win64" fn(),
-    pub _set_mem: extern "win64" fn(),
+    pub _set_mem: extern "win64" fn(buffer: *mut u8, size: usize, value: u8),
     pub _create_event_ex: extern "win64" fn(),
 }
 
@@ -161,6 +163,7 @@ pub fn str_to_utf16<'a>(
 ) -> Result<Pool<'a, [Char16]>, Status> {
 
     // Allocate a slice of Char16 from pool memory
+    // TODO: use boot_services.allocate_slice
     // This needs to be done manually because a slice is not Sized
     let mut buf_len: usize = src
         .chars()
@@ -210,6 +213,7 @@ pub fn utf16_to_str<'a>(
         .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER));
 
     // Allocate a buffer large enough to hold the string when converted into UTF-8 code units
+    // TODO: use boot_services.allocate_slice
     let buf_len: usize = chars
         .clone()
         .map(|c| c.len_utf8())

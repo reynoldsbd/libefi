@@ -88,7 +88,7 @@ unsafe impl<T: ?Sized + Sync> Sync for OwnedPtr<T> { }
 
 
 /// A physical memory address
-pub type PhysicalAddress = u64;
+pub type PhysicalAddress = *mut u8;
 
 
 /// Status code

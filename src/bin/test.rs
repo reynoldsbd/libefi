@@ -7,6 +7,7 @@ extern crate efi;
 
 use core::{
     fmt,
+    ptr,
     slice,
 };
 
@@ -182,7 +183,7 @@ fn test_memory(system_table: &SystemTable) -> Result<(), usize> {
     efi_println!(system_table.con_out, "test errors");
 
     efi_println!(system_table.con_out, "    test page allocation");
-    let mut addr: PhysicalAddress = 1;
+    let mut addr: PhysicalAddress = ptr::null_mut();
     let res = system_table.boot_services.allocate_pages(
         AllocateType::AllocateAnyPages,
         MemoryType::LoaderData,
@@ -194,7 +195,7 @@ fn test_memory(system_table: &SystemTable) -> Result<(), usize> {
         efi_println!(system_table.con_out, "!   {:?}", err);
         num_errs += 1;
     } else {
-        efi_println!(system_table.con_out, "#   page allocated at {:x}", addr);
+        efi_println!(system_table.con_out, "#   page allocated at {:p}", addr);
 
         efi_println!(system_table.con_out, "    test writing to allocated page");
         // Build a byte slice from the allocated memory, then attempt to write into that slice

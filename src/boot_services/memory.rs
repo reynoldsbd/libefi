@@ -1,7 +1,14 @@
 
-use core::ops;
+use core::{
+    mem,
+    ops,
+    slice,
+};
 
-use super::BootServices;
+use super::{
+    BootServices,
+    Pool,
+};
 use {
     types::{
         PhysicalAddress,
@@ -177,5 +184,28 @@ impl BootServices {
         (self._free_pool)(buffer)
             .as_result()
             .map(|_| ())
+    }
+
+    /// Allocates a slice from pool memory
+    pub fn allocate_slice<'a, T>(&'a self, count: usize) -> Result<Pool<'a, [T]>, Status> {
+
+        let ptr = self.allocate_pool(MemoryType::LoaderData, count * mem::size_of::<T>())?;
+        unsafe {
+            Ok(Pool::new_unchecked(
+                slice::from_raw_parts_mut(ptr as *mut T, count),
+                self
+            ))
+        }
+    }
+
+    /// Fills the buffer with the specified value
+    ///
+    /// # Safety
+    ///
+    /// This method is inherently unsafe, because it can modify the contents of any specified memory
+    /// location. The caller is responsible for
+    pub unsafe fn set_mem(&self, buffer: *mut u8, size: usize, value: u8) {
+
+        (self._set_mem)(buffer, size, value);
     }
 }
