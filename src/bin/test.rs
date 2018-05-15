@@ -3,6 +3,7 @@
 #![no_std]
 
 
+#[macro_use]
 extern crate efi;
 
 use core::{
@@ -40,52 +41,34 @@ use efi::{
 };
 
 
-/// Print text to the console
-macro_rules! efi_print {
-    ($con_out:expr, $($arg:tt)*) => ({
-        use core::fmt::Write;
-        (&*$con_out)
-            .write_fmt(format_args!($($arg)*))
-            .expect("could not write to console");
-    });
-}
-
-
-/// Print a line of text to the console
-macro_rules! efi_println {
-    ($con_out:expr, $fmt:expr) => (efi_print!($con_out, concat!($fmt, "\r\n")));
-    ($con_out:expr, $fmt:expr, $($arg:tt)*) => (efi_print!($con_out, concat!($fmt, "\r\n"), $($arg)*));
-}
-
-
 fn test_utf16_conversion(system_table: &SystemTable) -> Result<(), usize> {
 
     let mut num_errs = 0;
-    efi_println!(system_table.con_out, "test UTF-16 conversion");
+    efi_println!(system_table, "test UTF-16 conversion");
 
-    efi_println!(system_table.con_out, "    test str to UTF-16");
+    efi_println!(system_table, "    test str to UTF-16");
     let src = "some string";
     match boot_services::str_to_utf16(src, &*(system_table.boot_services)) {
         Ok(buf) => {
-            efi_println!(system_table.con_out, "#   buf: {:?}", buf);
+            efi_println!(system_table, "#   buf: {:?}", buf);
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to convert str to UTF-16");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to convert str to UTF-16");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         }
     }
 
-    efi_println!(system_table.con_out, "    test UTF-16 to str");
+    efi_println!(system_table, "    test UTF-16 to str");
     // Null-terminated "other string"
     let src: [u16; 13] = [0x6f,0x74,0x68,0x65,0x72,0x20,0x73,0x74,0x72,0x69,0x6e,0x67,0x00];
     match boot_services::utf16_to_str(&src, &*(system_table.boot_services)) {
         Ok(string) => {
-            efi_println!(system_table.con_out, "#   string: {}", string);
+            efi_println!(system_table, "#   string: {}", string);
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to convert UTF-16 to str");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to convert UTF-16 to str");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         }
     }
@@ -101,9 +84,9 @@ fn test_utf16_conversion(system_table: &SystemTable) -> Result<(), usize> {
 fn test_events(system_table: &SystemTable) -> Result<(), usize> {
 
     let mut num_errs = 0;
-    efi_println!(system_table.con_out, "test events");
+    efi_println!(system_table, "test events");
 
-    efi_println!(system_table.con_out, "    test creating simple event");
+    efi_println!(system_table, "    test creating simple event");
     let simple_result = system_table.boot_services.create_event(
         EventType::empty(),
         TPL::Callback,
@@ -113,38 +96,38 @@ fn test_events(system_table: &SystemTable) -> Result<(), usize> {
     match simple_result {
         Ok(simple_event) => {
 
-            efi_println!(system_table.con_out, "    test check new simple event");
+            efi_println!(system_table, "    test check new simple event");
             let simple_check_result = system_table.boot_services.check_event(simple_event);
             if let Ok(()) = simple_check_result {
-                efi_println!(system_table.con_out, "!   simple event was already signaled");
+                efi_println!(system_table, "!   simple event was already signaled");
                 num_errs += 1;
             }
 
-            efi_println!(system_table.con_out, "    test signal simple event");
+            efi_println!(system_table, "    test signal simple event");
             if let Err(err) = system_table.boot_services.signal_event(simple_event) {
-                efi_println!(system_table.con_out, "!   failed to signal simple event");
-                efi_println!(system_table.con_out, "!   {:?}", err);
+                efi_println!(system_table, "!   failed to signal simple event");
+                efi_println!(system_table, "!   {:?}", err);
                 num_errs += 1;
             } else {
 
-                efi_println!(system_table.con_out, "    test wait for simple event");
+                efi_println!(system_table, "    test wait for simple event");
                 let events = &[simple_event; 1];
                 if let Err(err) = system_table.boot_services.wait_for_event(events) {
-                    efi_println!(system_table.con_out, "!   failed to wait for simple event");
-                    efi_println!(system_table.con_out, "!   {:?}", err);
+                    efi_println!(system_table, "!   failed to wait for simple event");
+                    efi_println!(system_table, "!   {:?}", err);
                     num_errs += 1;
                 }
             }
 
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to create simple event");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to create simple event");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         },
     }
 
-    efi_println!(system_table.con_out, "    test creating event with callback");
+    efi_println!(system_table, "    test creating event with callback");
     let simple_result = system_table.boot_services.create_event(
         EventType::NOTIFY_SIGNAL,
         TPL::Callback,
@@ -154,17 +137,17 @@ fn test_events(system_table: &SystemTable) -> Result<(), usize> {
     match simple_result {
         Ok(simple_event) => {
 
-            efi_println!(system_table.con_out, "    test signal event with callback");
+            efi_println!(system_table, "    test signal event with callback");
             if let Err(err) = system_table.boot_services.signal_event(simple_event) {
-                efi_println!(system_table.con_out, "!   failed to signal event with callback");
-                efi_println!(system_table.con_out, "!   {:?}", err);
+                efi_println!(system_table, "!   failed to signal event with callback");
+                efi_println!(system_table, "!   {:?}", err);
                 num_errs += 1;
             }
 
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to create event with callback");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to create event with callback");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         },
     }
@@ -180,9 +163,9 @@ fn test_events(system_table: &SystemTable) -> Result<(), usize> {
 fn test_memory(system_table: &SystemTable) -> Result<(), usize> {
 
     let mut num_errs = 0;
-    efi_println!(system_table.con_out, "test errors");
+    efi_println!(system_table, "test errors");
 
-    efi_println!(system_table.con_out, "    test page allocation");
+    efi_println!(system_table, "    test page allocation");
     let mut addr: PhysicalAddress = ptr::null_mut();
     let res = system_table.boot_services.allocate_pages(
         AllocateType::AllocateAnyPages,
@@ -191,62 +174,62 @@ fn test_memory(system_table: &SystemTable) -> Result<(), usize> {
         &mut addr
     );
     if let Err(err) = res {
-        efi_println!(system_table.con_out, "!   failed to allocate page");
-        efi_println!(system_table.con_out, "!   {:?}", err);
+        efi_println!(system_table, "!   failed to allocate page");
+        efi_println!(system_table, "!   {:?}", err);
         num_errs += 1;
     } else {
-        efi_println!(system_table.con_out, "#   page allocated at {:p}", addr);
+        efi_println!(system_table, "#   page allocated at {:p}", addr);
 
-        efi_println!(system_table.con_out, "    test writing to allocated page");
+        efi_println!(system_table, "    test writing to allocated page");
         // Build a byte slice from the allocated memory, then attempt to write into that slice
         // There's no way to elegantly catch if this fails. Either the write will succeed, or the
         // system will catch due to an uncaught interrupt
         let mem = unsafe { slice::from_raw_parts_mut(addr as *mut u8, 4096) };
         mem[0] = 1;
 
-        efi_println!(system_table.con_out, "    test freeing page");
+        efi_println!(system_table, "    test freeing page");
         if let Err(err) = system_table.boot_services.free_pages(addr, 1) {
-            efi_println!(system_table.con_out, "!   failed to free page");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to free page");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         }
     }
 
-    efi_println!(system_table.con_out, "    test pool allocation");
+    efi_println!(system_table, "    test pool allocation");
     let res = system_table.boot_services.allocate_pool(MemoryType::LoaderData, 128);
     match res {
         Ok(buffer) => {
-            efi_println!(system_table.con_out, "#   pool allocated at {:p}", buffer);
+            efi_println!(system_table, "#   pool allocated at {:p}", buffer);
 
-            efi_println!(system_table.con_out, "    test writing to allocated pool");
+            efi_println!(system_table, "    test writing to allocated pool");
             // Build a byte slice from the allocated memory, then attempt to write into that slice
             // There's no way to elegantly catch if this fails. Either the write will succeed, or
             // the system will crash due to an uncaught interrupt
             let mem = unsafe { slice::from_raw_parts_mut(buffer, 128) };
             mem[0] = 1;
 
-            efi_println!(system_table.con_out, "    test freeing pool");
+            efi_println!(system_table, "    test freeing pool");
             if let Err(err) = system_table.boot_services.free_pool(buffer) {
-                efi_println!(system_table.con_out, "!   failed to free pool");
-                efi_println!(system_table.con_out, "!   {:?}", err);
+                efi_println!(system_table, "!   failed to free pool");
+                efi_println!(system_table, "!   {:?}", err);
                 num_errs += 1;
             }
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to allocate pool");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to allocate pool");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         },
     }
 
-    efi_println!(system_table.con_out, "    test memory map");
+    efi_println!(system_table, "    test memory map");
     match system_table.boot_services.get_memory_map() {
         Ok(map) => {
-            efi_println!(system_table.con_out, "#   first entry: {:?}", map[0]);
+            efi_println!(system_table, "#   first entry: {:?}", map[0]);
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to get memory map");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to get memory map");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         },
     }
@@ -262,15 +245,15 @@ fn test_memory(system_table: &SystemTable) -> Result<(), usize> {
 fn test_protocols(image_handle: Handle, system_table: &SystemTable) -> Result<(), usize> {
 
     let mut num_errs = 0;
-    efi_println!(system_table.con_out, "test protocols");
+    efi_println!(system_table, "test protocols");
 
-    efi_println!(system_table.con_out, "    test locate handle");
+    efi_println!(system_table, "    test locate handle");
     let guid = SimpleTextInput::guid();
     match system_table.boot_services.locate_handle(SearchType::ByProtocol, Some(guid), None) {
         Ok(handles) => {
-            efi_println!(system_table.con_out, "#   found {} handles for protocol", handles.len());
+            efi_println!(system_table, "#   found {} handles for protocol", handles.len());
 
-            efi_println!(system_table.con_out, "    test open protocol");
+            efi_println!(system_table, "    test open protocol");
             let res = system_table.boot_services.open_protocol::<SimpleTextInput>(
                 handles[0],
                 image_handle,
@@ -279,7 +262,7 @@ fn test_protocols(image_handle: Handle, system_table: &SystemTable) -> Result<()
             );
             match res {
                 Ok(interface) => {
-                    efi_println!(system_table.con_out, "    test close protocol");
+                    efi_println!(system_table, "    test close protocol");
                     let res = system_table.boot_services.close_protocol(
                         handles[0],
                         interface,
@@ -287,21 +270,21 @@ fn test_protocols(image_handle: Handle, system_table: &SystemTable) -> Result<()
                         0
                     );
                     if let Err(err) = res {
-                        efi_println!(system_table.con_out, "!   failed to close protocol");
-                        efi_println!(system_table.con_out, "!   {:?}", err);
+                        efi_println!(system_table, "!   failed to close protocol");
+                        efi_println!(system_table, "!   {:?}", err);
                         num_errs += 1;
                     }
                 },
                 Err(err) => {
-                    efi_println!(system_table.con_out, "!   failed to open protocol");
-                    efi_println!(system_table.con_out, "!   {:?}", err);
+                    efi_println!(system_table, "!   failed to open protocol");
+                    efi_println!(system_table, "!   {:?}", err);
                     num_errs += 1;
                 },
             }
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to locate handle");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to locate handle");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         },
     }
@@ -317,9 +300,9 @@ fn test_protocols(image_handle: Handle, system_table: &SystemTable) -> Result<()
 fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), usize> {
 
     let mut num_errs = 0;
-    efi_println!(system_table.con_out, "test files");
+    efi_println!(system_table, "test files");
 
-    efi_println!(system_table.con_out, "    test enumerating volumes");
+    efi_println!(system_table, "    test enumerating volumes");
     let guid = SimpleFileSystem::guid();
     match system_table.boot_services.locate_handle(SearchType::ByProtocol, Some(guid), None) {
         Ok(handles) => {
@@ -341,7 +324,7 @@ fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), us
                                     Ok(fs_info) => {
                                         let volume_label = fs_info.volume_label(&*(system_table.boot_services))
                                             .unwrap();
-                                        efi_println!(system_table.con_out, "#   volume label: {}", volume_label);
+                                        efi_println!(system_table, "#   volume label: {}", volume_label);
 
                                         if volume_label == "EFISys" {
                                             if let Err(err_count) = test_files_2(&root, system_table) {
@@ -350,15 +333,15 @@ fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), us
                                         }
                                     },
                                     Err(err) => {
-                                        efi_println!(system_table.con_out, "!   failed to get file system info");
-                                        efi_println!(system_table.con_out, "!   {:?}", err);
+                                        efi_println!(system_table, "!   failed to get file system info");
+                                        efi_println!(system_table, "!   {:?}", err);
                                         num_errs += 1;
                                     }
                                 }
                             },
                             Err(err) => {
-                                efi_println!(system_table.con_out, "!   failed to open volume");
-                                efi_println!(system_table.con_out, "!   {:?}", err);
+                                efi_println!(system_table, "!   failed to open volume");
+                                efi_println!(system_table, "!   {:?}", err);
                                 num_errs += 1;
                             },
                         }
@@ -370,14 +353,14 @@ fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), us
                             0
                         );
                         if let Err(err) = res {
-                            efi_println!(system_table.con_out, "!   failed to close file system protocol");
-                            efi_println!(system_table.con_out, "!   {:?}", err);
+                            efi_println!(system_table, "!   failed to close file system protocol");
+                            efi_println!(system_table, "!   {:?}", err);
                             num_errs += 1;
                         }
                     },
                     Err(err) => {
-                        efi_println!(system_table.con_out, "!   failed to open file system protocol");
-                        efi_println!(system_table.con_out, "!   {:?}", err);
+                        efi_println!(system_table, "!   failed to open file system protocol");
+                        efi_println!(system_table, "!   {:?}", err);
                         num_errs += 1;
                         break;
                     },
@@ -385,8 +368,8 @@ fn test_files(image_handle: Handle, system_table: &SystemTable) -> Result<(), us
             }
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to get volume handles");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to get volume handles");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         }
     }
@@ -403,28 +386,28 @@ fn test_files_2(root: &File, system_table: &SystemTable) -> Result<(), usize> {
 
     let mut num_errs = 0;
 
-    efi_println!(system_table.con_out, "    test open file");
+    efi_println!(system_table, "    test open file");
     let path = boot_services::str_to_utf16("\\EFI\\test.txt", &system_table.boot_services)
         .unwrap();
     match root.open(&path, FileMode::READ, FileAttributes::empty()) {
         Ok(file) => {
-            efi_println!(system_table.con_out, "    test read from file");
+            efi_println!(system_table, "    test read from file");
             let mut buf = [0u8; 20];
             match file.read(&mut buf) {
                 Ok(len) => {
-                    efi_println!(system_table.con_out, "#   read {} bytes", len);
-                    efi_println!(system_table.con_out, "#   data: {:?}", &buf[0..len]);
+                    efi_println!(system_table, "#   read {} bytes", len);
+                    efi_println!(system_table, "#   data: {:?}", &buf[0..len]);
                 },
                 Err(err) => {
-                    efi_println!(system_table.con_out, "!   failed to read file");
-                    efi_println!(system_table.con_out, "!   {:?}", err);
+                    efi_println!(system_table, "!   failed to read file");
+                    efi_println!(system_table, "!   {:?}", err);
                     num_errs += 1;
                 },
             }
         },
         Err(err) => {
-            efi_println!(system_table.con_out, "!   failed to open file");
-            efi_println!(system_table.con_out, "!   {:?}", err);
+            efi_println!(system_table, "!   failed to open file");
+            efi_println!(system_table, "!   {:?}", err);
             num_errs += 1;
         },
     }
@@ -471,7 +454,7 @@ pub extern fn efi_main(image_handle: Handle, system_table: &SystemTable) -> Stat
         total_errs += num_errs;
     }
 
-    efi_println!(system_table.con_out, "tests completed with {} errors", total_errs);
+    efi_println!(system_table, "tests completed with {} errors", total_errs);
 
     loop { }
 }
@@ -480,7 +463,7 @@ pub extern fn efi_main(image_handle: Handle, system_table: &SystemTable) -> Stat
 /// Required Rust lang item
 #[lang = "eh_personality"]
 #[no_mangle]
-pub extern fn eh_personality() {}
+pub extern fn eh_personality() { }
 
 static mut SYSTEM_TABLE: *const SystemTable = 0 as *const SystemTable;
 
@@ -493,8 +476,8 @@ pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str, line: u32, col:
         let system_table = SYSTEM_TABLE
             .as_ref()
             .unwrap();
-        efi_println!(system_table.con_out, "panic in file {}:{}:{}", file, line, col);
-        efi_println!(system_table.con_out, "{}", msg);
+        efi_println!(system_table, "panic in file {}:{}:{}", file, line, col);
+        efi_println!(system_table, "{}", msg);
     }
-    loop {}
+    loop { }
 }
