@@ -14,6 +14,7 @@ pub use self::protocols::*;
 
 use types::{
     Char16,
+    EfiBs,
     Handle,
     PhysicalAddress,
     Status,
@@ -25,6 +26,7 @@ use core::{
         decode_utf16,
         REPLACEMENT_CHARACTER,
     },
+    fmt,
     slice,
     str::from_utf8_unchecked_mut,
     sync::atomic::AtomicPtr,
@@ -126,7 +128,7 @@ pub struct BootServices {
     pub _open_protocol: extern "win64" fn(
         handle: Handle,
         protocol: &Guid,
-        interface: &mut *mut (),
+        interface: &mut EfiBs<()>,
         agent_handle: Handle,
         controller_handle: Handle,
         attributes: OpenProtocolAttributes
@@ -153,6 +155,14 @@ pub struct BootServices {
     pub _copy_mem: extern "win64" fn(),
     pub _set_mem: extern "win64" fn(buffer: *mut u8, size: usize, value: u8),
     pub _create_event_ex: extern "win64" fn(),
+}
+
+impl fmt::Debug for BootServices {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("BootServices")
+            .field("hdr", &self.hdr)
+            .finish()
+    }
 }
 
 

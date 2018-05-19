@@ -1,5 +1,4 @@
 use core::fmt;
-
 use {
     boot_services::{
         Event,
@@ -9,7 +8,7 @@ use {
     types::{
         Bool,
         Char16,
-        OwnedPtr,
+        EfiRt,
         Status,
     },
 };
@@ -24,7 +23,7 @@ use {
 pub struct SimpleTextInput {
     pub _reset: extern "win64" fn(this: &SimpleTextInput, extended_verification: Bool) -> Status,
     pub _read_key_stroke: extern "win64" fn(this: &SimpleTextInput, key: &mut InputKey) -> Status,
-    pub wait_for_key: OwnedPtr<Event>,
+    pub wait_for_key: EfiRt<Event>,
 }
 
 impl SimpleTextInput {
@@ -53,6 +52,14 @@ impl SimpleTextInput {
 impl Protocol for SimpleTextInput {
 
     fn guid() -> &'static Guid { &SIMPLE_TEXT_INPUT_GUID }
+}
+
+impl fmt::Debug for SimpleTextInput {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("SimpleTextInput")
+            .field("wait_for_key", &self.wait_for_key)
+            .finish()
+    }
 }
 
 
@@ -134,7 +141,7 @@ pub struct SimpleTextOutput {
         row: usize
     ) -> Status,
     pub _enable_cursor: extern "win64" fn(this: &SimpleTextOutput, visible: Bool) -> Status,
-    pub mode: OwnedPtr<SimpleTextOutputMode>,
+    pub mode: EfiRt<SimpleTextOutputMode>,
 }
 
 impl SimpleTextOutput {
@@ -213,6 +220,14 @@ impl SimpleTextOutput {
         (self._enable_cursor)(self, Bool::from(visible))
             .as_result()?;
         Ok(())
+    }
+}
+
+impl fmt::Debug for SimpleTextOutput {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("SimpleTextOutput")
+            .field("mode", &self.mode)
+            .finish()
     }
 }
 
@@ -320,6 +335,7 @@ impl Color {
 
 
 /// Describes the current attributes of the output device
+#[derive(Debug)]
 #[repr(C)]
 pub struct SimpleTextOutputMode {
     pub max_mode: i32,

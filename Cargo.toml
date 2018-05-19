@@ -3,6 +3,13 @@ name = "efi"
 version = "0.1.0"
 authors = ["Bobby Reynolds <bobby@reynoldsbd.net>"]
 
+[features]
+default = ["boot-services"]
+boot-services = ["bitflags"]
+
 [dependencies]
-bitflags = "1.0"
 rlibc = "1.0"
+
+[dependencies.bitflags]
+version = "1.0"
+optional = true

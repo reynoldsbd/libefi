@@ -5,8 +5,8 @@ use super::{
 };
 
 use types::{
+    EfiBs,
     Handle,
-    OwnedPtr,
     Status,
 };
 
@@ -98,15 +98,16 @@ impl BootServices {
     }
 
     /// Opens the specified protocol on behalf of the calling agent
-    pub fn open_protocol<T>(&self,
-                            handle: Handle,
-                            agent_handle: Handle,
-                            controller_handle: Handle,
-                            attributes: OpenProtocolAttributes)
-        -> Result<OwnedPtr<T>, Status>
-        where T: Protocol {
+    pub fn open_protocol<T>(
+        &self,
+        handle: Handle,
+        agent_handle: Handle,
+        controller_handle: Handle,
+        attributes: OpenProtocolAttributes
+    ) -> Result<EfiBs<T>, Status>
+    where T: Protocol {
 
-        let mut interface = 0 as *mut ();
+        let mut interface = unsafe { EfiBs::new() };
         (self._open_protocol)(
             handle,
             T::guid(),
@@ -115,18 +116,24 @@ impl BootServices {
             controller_handle,
             attributes
         )
-            .as_result()
-            .map(|_| unsafe { OwnedPtr::new_unchecked(interface as *mut T) })
+            .as_result()?;
+
+        if interface.is_null() {
+            Err(Status::NotFound)
+        } else {
+            Ok(unsafe { mem::transmute(interface) })
+        }
     }
 
     /// Closes the specified protocol that was previously opened on the specified `handle`
-    pub fn close_protocol<T>(&self,
-                             handle: Handle,
-                             _interface: OwnedPtr<T>,
-                             agent_handle: Handle,
-                             controller_handle: Handle)
-        -> Result<(), Status>
-        where T: Protocol {
+    pub fn close_protocol<T>(
+        &self,
+        handle: Handle,
+        _interface: EfiBs<T>,
+        agent_handle: Handle,
+        controller_handle: Handle
+    ) -> Result<(), Status>
+    where T: Protocol {
 
         (self._close_protocol)(handle, T::guid(), agent_handle, controller_handle)
             .as_result()

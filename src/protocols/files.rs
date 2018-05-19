@@ -16,7 +16,7 @@ use {
     types::{
         Bool,
         Char16,
-        OwnedPtr,
+        EfiBs,
         Status,
     },
 };
@@ -28,7 +28,7 @@ pub struct File {
     pub revision: u64,
     pub _open: extern "win64" fn(
         this: &File,
-        new_handle: &mut *mut File,
+        new_handle: &mut EfiBs<File>,
         file_name: *const Char16,
         open_mode: FileMode,
         attributes: FileAttributes
@@ -57,12 +57,17 @@ impl File {
         file_name: &[Char16],
         open_mode: FileMode,
         attributes: FileAttributes
-    ) -> Result<OwnedPtr<File>, Status> {
+    ) -> Result<EfiBs<File>, Status> {
 
-        let mut file = 0 as *mut File;
+        let mut file = unsafe { EfiBs::new() };
         (self._open)(self, &mut file, file_name.as_ptr(), open_mode, attributes)
-            .as_result()
-            .map(|_| unsafe { OwnedPtr::new_unchecked(file) })
+            .as_result()?;
+
+        if file.is_null() {
+            Err(Status::NotFound)
+        } else {
+            Ok(file)
+        }
     }
 
     /// Closes this file
@@ -86,7 +91,7 @@ impl File {
     }
 
     /// Returns information about a file
-    pub fn get_info<T>(&self, boot_services: &BootServices) -> Result<OwnedPtr<T>, Status>
+    pub fn get_info<'a, T>(&self, boot_services: &'a BootServices) -> Result<Pool<'a, T>, Status>
         where T: FileInformationType + Sized {
 
         let mut buf_size = mem::size_of::<T>();
@@ -96,17 +101,17 @@ impl File {
             // If the initial buffer happened to be large enough, return it
             // This should never happen, because the length of the file name or volume label should
             // always be greater than 1
-            return Ok(unsafe { OwnedPtr::new_unchecked(buf as *mut T) });
+            return Ok(unsafe { Pool::new_unchecked(buf as *mut T, boot_services) });
         } else if res != Status::BufferTooSmall {
             return Err(res)
         }
 
         // Reallocate the buffer with the specified size
         boot_services.free_pool(buf)?;
-        boot_services.allocate_pool(MemoryType::LoaderData, buf_size)?;
+        let buf = boot_services.allocate_pool(MemoryType::LoaderData, buf_size)?;
         (self._get_info)(self, T::guid(), &mut buf_size, buf)
             .as_result()
-            .map(|_| unsafe { OwnedPtr::new_unchecked(buf as *mut T) })
+            .map(|_| unsafe { Pool::new_unchecked(buf as *mut T, boot_services) })
     }
 }
 
@@ -245,19 +250,24 @@ pub struct SimpleFileSystem {
     pub revision: u64,
     pub _open_volume: extern "win64" fn(
         this: &SimpleFileSystem,
-        root: &mut *mut File
+        root: &mut EfiBs<File>
     ) -> Status,
 }
 
 impl SimpleFileSystem {
 
     /// Opens the root directory on a volume
-    pub fn open_volume(&self) -> Result<OwnedPtr<File>, Status> {
+    pub fn open_volume(&self) -> Result<EfiBs<File>, Status> {
 
-        let mut file = 0 as *mut File;
+        let mut file = unsafe { EfiBs::new() };
         (self._open_volume)(self, &mut file)
-            .as_result()
-            .map(|_| unsafe { OwnedPtr::new_unchecked(file) })
+            .as_result()?;
+
+        if file.is_null() {
+            Err(Status::NotFound)
+        } else {
+            Ok(file)
+        }
     }
 }
 

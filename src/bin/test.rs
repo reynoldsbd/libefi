@@ -34,6 +34,7 @@ use efi::{
     },
     SystemTable,
     types::{
+        EfiRt,
         Handle,
         PhysicalAddress,
         Status,
@@ -426,31 +427,31 @@ extern "win64" fn echo_callback(_: &Event, _: &&str) {}
 
 
 #[no_mangle]
-pub extern fn efi_main(image_handle: Handle, system_table: &SystemTable) -> Status {
+pub extern fn efi_main(image_handle: Handle, system_table: EfiRt<SystemTable>) -> Status {
 
     let mut total_errs = 0;
 
     unsafe {
-        SYSTEM_TABLE = system_table;
+        SYSTEM_TABLE = &*system_table;
     }
 
-    if let Err(num_errs) = test_events(system_table) {
+    if let Err(num_errs) = test_events(&system_table) {
         total_errs += num_errs;
     }
 
-    if let Err(num_errs) = test_memory(system_table) {
+    if let Err(num_errs) = test_memory(&system_table) {
         total_errs += num_errs;
     }
 
-    if let Err(num_errs) = test_protocols(image_handle, system_table) {
+    if let Err(num_errs) = test_protocols(image_handle, &system_table) {
         total_errs += num_errs;
     }
 
-    if let Err(num_errs) = test_utf16_conversion(system_table) {
+    if let Err(num_errs) = test_utf16_conversion(&system_table) {
         total_errs += num_errs;
     }
 
-    if let Err(num_errs) = test_files(image_handle, system_table) {
+    if let Err(num_errs) = test_files(image_handle, &system_table) {
         total_errs += num_errs;
     }
 

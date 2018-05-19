@@ -5,12 +5,15 @@
 #![no_std]
 
 
+#[cfg(feature = "boot-services")]
 #[macro_use]
 extern crate bitflags;
 extern crate rlibc;
 
 
+#[cfg(feature = "boot-services")]
 pub mod boot_services;
+#[cfg(feature = "boot-services")]
 pub mod protocols;
 pub mod runtime_services;
 mod system_table;
@@ -20,6 +23,7 @@ pub use system_table::SystemTable;
 
 
 /// Print text to the console
+#[cfg(feature = "boot-services")]
 #[macro_export]
 macro_rules! efi_print {
     ($system_table:expr, $($arg:tt)*) => ({
@@ -32,6 +36,7 @@ macro_rules! efi_print {
 
 
 /// Print a line of text to the console
+#[cfg(feature = "boot-services")]
 #[macro_export]
 macro_rules! efi_println {
     ($system_table:expr, $fmt:expr) =>

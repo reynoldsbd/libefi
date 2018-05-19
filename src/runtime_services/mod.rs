@@ -1,6 +1,7 @@
 //! EFI services available at all times
 
 
+use core::fmt;
 use types::{
     Char16,
     Status,
@@ -32,4 +33,12 @@ pub struct RuntimeServices {
     pub _update_capsule: extern "win64" fn(),
     pub _query_capsule_capabilities: extern "win64" fn(),
     pub _query_variable_info: extern "win64" fn(),
+}
+
+impl fmt::Debug for RuntimeServices {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("RuntimeServices")
+            .field("hdr", &self.hdr)
+            .finish()
+    }
 }

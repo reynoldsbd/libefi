@@ -8,6 +8,8 @@ use core::{
     ops,
     ptr::Unique,
 };
+#[cfg(feature = "boot-services")]
+use core::ptr;
 
 
 /// Logical boolean
@@ -34,57 +36,77 @@ impl convert::From<bool> for Bool {
 pub type Char16 = u16;
 
 
+/// Pointer to EFI boot services memory
+///
+/// An EfiBs is a read-only pointer to something in EFI "boot services memory". According to the
+/// UEFI specification, this memory is owned by boot-time EFI drivers and services, but may be
+/// freely used/overwritten by the operating system after exiting boot services. As such, the
+/// pointer may be freely dereferenced in a pre-boot environment but not after.
+#[cfg(feature = "boot-services")]
+#[derive(Debug)]
+#[repr(C)]
+pub struct EfiBs<T>(Unique<T>);
+
+#[cfg(feature = "boot-services")]
+impl<T> EfiBs<T> {
+
+    /// Creates a null EfiBs pointer
+    ///
+    /// This method is primarily useful when dealing with foreign APIs that return pointers via out
+    /// parameters, where the caller needs to have a mutable pointer available but the referent of
+    /// that pointer is irrelevant since the API will overwrite the pointer.
+    ///
+    /// # Safety
+    ///
+    /// The caller is responsible for ensuring the pointer is set to something valid before it is
+    /// dereferenced. The `is_null` method may be helpful in such validation.
+    pub(crate) unsafe fn new() -> EfiBs<T> {
+        EfiBs(Unique::new_unchecked(ptr::null_mut()))
+    }
+
+    /// Determines whether this EfiBs is null
+    ///
+    /// This method is useful for validating that an EfiBs value has been set to some value. Of
+    /// course a non-null pointer may still refer to an invalid location, but this method can at
+    /// least show whether a foreign API successfully changed the value of an EfiBs to something
+    /// non-null.
+    pub(crate) fn is_null(&self) -> bool {
+        self.0.as_ptr().is_null()
+    }
+}
+
+#[cfg(feature = "boot-services")]
+impl<T> ops::Deref for EfiBs<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        unsafe { self.0.as_ref() }
+    }
+}
+
+
+/// Pointer to EFI runtime memory
+///
+/// An EfiRt is a read-only pointer to something in EFI "runtime memory". According to the UEFI
+/// specification, the operating system must never overwrite or deallocate runtime memory, so this
+/// pointer is always safe to dereference (assuming runtime memory is mapped).
+#[derive(Debug)]
+#[repr(C)]
+pub struct EfiRt<T>(Unique<T>);
+
+impl<T> ops::Deref for EfiRt<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        unsafe { self.0.as_ref() }
+    }
+}
+
+
 /// Opaque handle to some object
 pub type Handle = usize;
 
 
 /// Used to differentiate status codes
 const HIGHBIT: usize = 0x8000_0000_0000_0000;
-
-
-/// Pointer to an owned item
-///
-/// This is a custom smart-pointer type used to provide a safe interface over the pointers used in
-/// EFI tables. It allows only immutable dereferencing and panics if the underlying pointer is null.
-#[repr(C)]
-pub struct OwnedPtr<T: ?Sized>(Option<Unique<T>>);
-
-impl<T: ?Sized> OwnedPtr<T> {
-
-    /// Returns an underlying raw pointer
-    pub fn as_mut_ptr(&self) -> *mut T {
-
-        if let OwnedPtr(Some(ref ptr)) = *self {
-            return ptr.as_ptr();
-        } else {
-            panic!("attempt to read null OwnedPtr");
-        }
-    }
-
-    /// Creates a new OwnedPtr from the given raw pointer
-    pub(crate) unsafe fn new_unchecked(ptr: *mut T) -> OwnedPtr<T> {
-
-        OwnedPtr(Some(Unique::new_unchecked(ptr)))
-    }
-}
-
-impl<T: ?Sized> ops::Deref for OwnedPtr<T> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-
-        if let OwnedPtr(Some(ref ptr)) = *self {
-            unsafe { return ptr.as_ref(); }
-        } else {
-            panic!("attempt to dereference null OwnedPtr");
-        }
-    }
-}
-
-// NonNull is not Sync because the underlying data may be aliased. Assuming OwnedPtr is only used in
-// FFI type definitions and never actually instantiated, we can be reasonably sure there is no
-// aiasing, at least within the current application.
-unsafe impl<T: ?Sized + Sync> Sync for OwnedPtr<T> { }
 
 
 /// A physical memory address
@@ -161,6 +183,7 @@ impl Status {
 }
 
 /// Data structure that precedes all of the standard EFI table types
+#[derive(Debug)]
 #[repr(C)]
 pub struct TableHeader {
     pub signature: u64,
