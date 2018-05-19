@@ -8,7 +8,6 @@ use {
     boot_services::{
         BootServices,
         Guid,
-        MemoryType,
         Pool,
         Protocol,
         utf16_to_str,
@@ -17,6 +16,7 @@ use {
         Bool,
         Char16,
         EfiBs,
+        MemoryType,
         Status,
     },
 };

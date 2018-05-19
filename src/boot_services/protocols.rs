@@ -1,18 +1,16 @@
-use super::{
-    BootServices,
-    MemoryType,
-    Pool,
-};
-
-use types::{
-    EfiBs,
-    Handle,
-    Status,
-};
-
 use core::{
     mem,
     slice,
+};
+use types::{
+    EfiBs,
+    Handle,
+    MemoryType,
+    Status,
+};
+use super::{
+    BootServices,
+    Pool,
 };
 
 

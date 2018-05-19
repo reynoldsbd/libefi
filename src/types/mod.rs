@@ -3,6 +3,8 @@
 //! This module contains FFI-safe types that can be used to interact with a UEFI platform.
 
 
+mod memory;
+
 use core::{
     convert,
     ops,
@@ -10,6 +12,12 @@ use core::{
 };
 #[cfg(feature = "boot-services")]
 use core::ptr;
+
+pub use self::memory::{
+    MemoryDescriptor,
+    MemoryMap,
+    MemoryType,
+};
 
 
 /// Logical boolean

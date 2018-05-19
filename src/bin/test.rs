@@ -18,7 +18,6 @@ use efi::{
         AllocateType,
         Event,
         EventType,
-        MemoryType,
         OpenProtocolAttributes,
         Protocol,
         SearchType,
@@ -36,6 +35,7 @@ use efi::{
     types::{
         EfiRt,
         Handle,
+        MemoryType,
         PhysicalAddress,
         Status,
     },

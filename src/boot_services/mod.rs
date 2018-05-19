@@ -1,25 +1,12 @@
 //! EFI services available in a pre-boot environment
 
+
 mod events;
 mod image;
 mod memory;
 mod pool_ptr;
 mod protocols;
 
-pub use self::events::*;
-pub use self::image::*;
-pub use self::memory::*;
-pub use self::pool_ptr::*;
-pub use self::protocols::*;
-
-use types::{
-    Char16,
-    EfiBs,
-    Handle,
-    PhysicalAddress,
-    Status,
-    TableHeader,
-};
 
 use core::{
     char::{
@@ -31,6 +18,22 @@ use core::{
     str::from_utf8_unchecked_mut,
     sync::atomic::AtomicPtr,
 };
+use types::{
+    Char16,
+    EfiBs,
+    Handle,
+    MemoryDescriptor,
+    MemoryType,
+    PhysicalAddress,
+    Status,
+    TableHeader,
+};
+
+pub use self::events::*;
+pub use self::image::*;
+pub use self::memory::*;
+pub use self::pool_ptr::*;
+pub use self::protocols::*;
 
 
 /// Contains pointers to all of the boot services

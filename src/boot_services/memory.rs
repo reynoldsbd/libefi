@@ -1,7 +1,6 @@
 
 use core::{
     mem,
-    ops,
     slice,
 };
 
@@ -11,9 +10,11 @@ use super::{
 };
 use {
     types::{
+        MemoryDescriptor,
+        MemoryMap,
+        MemoryType,
         PhysicalAddress,
         Status,
-        VirtualAddress,
     },
 };
 
@@ -25,78 +26,6 @@ pub enum AllocateType {
     AllocateMaxAddress,
     AllocateAddress,
     MaxAllocateType,
-}
-
-
-/// Describes a region of memory
-#[derive(Debug)]
-#[repr(C)]
-pub struct MemoryDescriptor {
-    pub memory_type: MemoryType,
-    pub physical_start: PhysicalAddress,
-    pub virtual_start: VirtualAddress,
-    pub number_of_pages: u64,
-    pub attribute: u64, // TODO: bitflags
-}
-
-
-/// Describes the system's current memory configuration
-pub struct MemoryMap<'a> {
-    boot_services: &'a BootServices,
-    buffer: *mut MemoryDescriptor,
-    descriptor_size: usize,
-    descriptor_version: u32,
-    pub key: usize,
-    pub size: usize,
-}
-
-impl<'a> ops::Drop for MemoryMap<'a> {
-
-    fn drop(&mut self) {
-
-        self.boot_services.free_pool(self.buffer as *mut u8)
-            .expect("failed to deallocate MemoryMap");
-    }
-}
-
-impl<'a> ops::Index<usize> for MemoryMap<'a> {
-    type Output = MemoryDescriptor;
-
-    fn index(&self, index: usize) -> &MemoryDescriptor {
-
-        if index > self.size {
-            panic!("MemoryMap index out of bounds");
-        }
-
-        // It would be convenient to use the offset method here, but descriptor_size may be variable
-        unsafe {
-            let addr = (self.buffer as usize) + (index * self.descriptor_size);
-            (addr as *mut MemoryDescriptor).as_ref().unwrap()
-        }
-    }
-}
-
-
-/// Type of memory
-#[derive(Debug)]
-#[repr(u32)]
-pub enum MemoryType {
-    ReservedMemoryType,
-    LoaderCode,
-    LoaderData,
-    BootServicesCode,
-    BootServicesData,
-    RuntimeServicesCode,
-    RuntimeServicesData,
-    ConventionalMemory,
-    UnusableMemory,
-    ACPIReclaimMemory,
-    ACPIMemoryNVS,
-    MemoryMappedIO,
-    MemoryMappedIOPortSpace,
-    PalCode,
-    PersistentMemory,
-    MaxMemoryType,
 }
 
 
@@ -124,10 +53,9 @@ impl BootServices {
     }
 
     /// Returns the current memory map
-    pub fn get_memory_map<'a>(&'a self) -> Result<MemoryMap<'a>, Status> {
+    pub fn get_memory_map(&self) -> Result<MemoryMap, Status> {
 
         let mut map = MemoryMap {
-            boot_services: self,
             buffer: 0 as *mut MemoryDescriptor,
             descriptor_size: 0,
             descriptor_version: 0,
@@ -162,11 +90,8 @@ impl BootServices {
             &mut map.descriptor_size,
             &mut map.descriptor_version
         )
-            .as_result()?;
-
-        // Fix up map.size and return
-        map.size = map.size / map.descriptor_size;
-        Ok(map)
+            .as_result()
+            .map(|_| map)
     }
 
     /// Allocates pool memory
