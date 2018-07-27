@@ -1,4 +1,6 @@
 #![feature(lang_items)]
+#![feature(panic_implementation)]
+#![feature(panic_info_message)]
 #![no_main]
 #![no_std]
 
@@ -7,7 +9,7 @@
 extern crate efi;
 
 use core::{
-    fmt,
+    panic::PanicInfo,
     ptr,
     slice,
 };
@@ -469,16 +471,19 @@ pub extern fn eh_personality() { }
 static mut SYSTEM_TABLE: *const SystemTable = 0 as *const SystemTable;
 
 /// Handles a panic by printing the error message to the screen
-#[lang = "panic_fmt"]
+#[allow(private_no_mangle_fns)]
 #[no_mangle]
-pub extern fn panic_fmt(msg: fmt::Arguments, file: &'static str, line: u32, col: u32) -> ! {
+#[panic_implementation]
+fn panic_fmt(pi: &PanicInfo) -> ! {
+    let sys_tab = unsafe { SYSTEM_TABLE.as_ref().unwrap() };
 
-    unsafe {
-        let system_table = SYSTEM_TABLE
-            .as_ref()
-            .unwrap();
-        efi_println!(system_table, "panic in file {}:{}:{}", file, line, col);
-        efi_println!(system_table, "{}", msg);
+    efi_println!(sys_tab, "!!! PANIC !!!");
+    if let Some(loc) = pi.location() {
+        efi_println!(sys_tab, "Location: {}:{}:{}", loc.file(), loc.line(), loc.column());
     }
+    if let Some(msg) = pi.message() {
+        efi_println!(sys_tab, "{}", msg);
+    }
+
     loop { }
 }
