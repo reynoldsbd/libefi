@@ -76,7 +76,7 @@ pub struct BootServices {
     pub _create_event: extern "win64" fn(
         event_type: EventType,
         notify_tpl: TPL,
-        notify_function: extern "win64" fn(event: &Event, context: *const ()),
+        notify_function: Option<extern "win64" fn(event: &Event, context: *const ())>,
         notify_context: *const (),
         event: &mut &Event
     ) -> Status,
