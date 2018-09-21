@@ -93,7 +93,7 @@ fn test_events(system_table: &SystemTable) -> Result<(), usize> {
     let simple_result = system_table.boot_services.create_event(
         EventType::empty(),
         TPL::Callback,
-        empty_callback,
+        None,
         &()
     );
     match simple_result {
@@ -134,7 +134,7 @@ fn test_events(system_table: &SystemTable) -> Result<(), usize> {
     let simple_result = system_table.boot_services.create_event(
         EventType::NOTIFY_SIGNAL,
         TPL::Callback,
-        echo_callback,
+        Some(echo_callback),
         &"callback message"
     );
     match simple_result {

@@ -1,3 +1,5 @@
+use core::ffi::c_void;
+use core::ptr;
 use super::BootServices;
 
 use types::{
@@ -8,10 +10,16 @@ use core::mem;
 
 
 /// UEFI Event
-#[derive(Debug)]
-pub struct Event(());
+#[derive(Debug, Clone, Copy)]
+pub struct Event(*const c_void);
 
 unsafe impl Sync for Event { }
+
+impl Default for Event {
+    fn default() -> Event {
+        Event(ptr::null())
+    }
+}
 
 
 bitflags! {
@@ -53,17 +61,17 @@ impl BootServices {
     pub fn create_event<T>(&self,
                            event_type: EventType,
                            notify_tpl: TPL,
-                           notify_function: extern "win64" fn(&Event, &T),
+                           notify_function: Option<extern "win64" fn(&Event, &T)>,
                            notify_context: &T)
         -> Result<&Event, Status> where T: ?Sized {
 
         // It's safe to cast notify_function to a different signature as long as the UEFI system
         // upholds its side of the spec and passes notify_context unmodified
-        let notify_function: extern "win64" fn(&Event, *const ()) =
-            unsafe { mem::transmute(notify_function) };
+        let notify_function: Option<extern "win64" fn(&Event, *const ())> =
+            notify_function.map(|func| unsafe { mem::transmute(func) } );
         let notify_context = notify_context as *const T as *const ();
 
-        let mut event = &Event(());
+        let mut event = &Event(ptr::null());
         (self._create_event)(event_type, notify_tpl, notify_function, notify_context, &mut event)
             .as_result()
             .map(|_| event)
